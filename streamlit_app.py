@@ -389,11 +389,11 @@ def generate_labels_pdf(label_data: list) -> bytes | None:
         textColor=colors.red, alignment=TA_LEFT, leading=12, spaceAfter=1)
     var_sty = ParagraphStyle("var", fontSize=10, fontName="Helvetica-Oblique",
         textColor=colors.black, alignment=TA_LEFT, leading=12, spaceAfter=2)
-    cmt_sty = ParagraphStyle("cmt", fontSize=9, fontName="Helvetica",
+    cmt_sty = ParagraphStyle("cmt", fontSize=7, fontName="Helvetica",
         textColor=colors.black, alignment=TA_LEFT, leading=11, spaceAfter=0)
-    rgt_sty = ParagraphStyle("rgt", fontSize=9, fontName="Helvetica",
+    rgt_sty = ParagraphStyle("rgt", fontSize=8, fontName="Helvetica",
         textColor=colors.black, alignment=TA_CENTER, leading=11, spaceAfter=1)
-    rit_sty = ParagraphStyle("rit", fontSize=9, fontName="Helvetica-Oblique",
+    rit_sty = ParagraphStyle("rit", fontSize=8, fontName="Helvetica-Oblique",
         textColor=colors.black, alignment=TA_CENTER, leading=11, spaceAfter=1)
     svr_sty = ParagraphStyle("svr", fontSize=7, fontName="Helvetica-Bold",
         textColor=colors.black, alignment=TA_CENTER, leading=9,
