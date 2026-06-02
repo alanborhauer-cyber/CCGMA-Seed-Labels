@@ -9,8 +9,6 @@ import os
 import io
 import sys
 import sqlite3
-import zipfile
-import xml.etree.ElementTree as ET
 import tempfile
 import streamlit as st
 
@@ -140,7 +138,7 @@ COLS = [
     "FileNumber", "Family", "Variety", "SeedSource", "Comments",
     "NumSeeds", "Season", "SeedSaverLevel", "HybridDoNotSave",
     "Edible", "WhereGrown", "PerennialAnnual", "GrownBy",
-    "Year", "SoilTemperature", "Germination",
+    "Year", "SoilTemperature", "Germination", "BackgroundInfo",
 ]
 
 CREATE_SQL = """
@@ -150,7 +148,7 @@ CREATE_SQL = """
         NumSeeds TEXT, Season TEXT, SeedSaverLevel TEXT,
         HybridDoNotSave TEXT, Edible TEXT, WhereGrown TEXT,
         PerennialAnnual TEXT, GrownBy TEXT, Year TEXT,
-        SoilTemperature TEXT, Germination TEXT
+        SoilTemperature TEXT, Germination TEXT, BackgroundInfo TEXT
     )
 """
 
@@ -163,122 +161,110 @@ def get_db() -> sqlite3.Connection:
         conn.execute(CREATE_SQL)
         conn.commit()
         st.session_state.db = conn
-        _load_ods(conn)
+        _load_xlsx(conn)
     return st.session_state.db
 
 
-def _load_ods(conn: sqlite3.Connection):
-    """Load _SEED_LIBRARY_PARSED.ods using only stdlib — no pandas/odfpy."""
-    NS_TABLE = "urn:oasis:names:tc:opendocument:xmlns:table:1.0"
-    NS_TEXT  = "urn:oasis:names:tc:opendocument:xmlns:text:1.0"
-
-    # Search locations
+def _load_xlsx(conn: sqlite3.Connection):
+    """Load _SEED_LIBRARY_PARSED.xlsx using openpyxl (stdlib-compatible zip+xml)."""
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    ods_path = None
+    xlsx_path = None
     for d in [script_dir, os.path.dirname(script_dir), os.getcwd()]:
-        cand = os.path.join(d, "_SEED_LIBRARY_PARSED.ods")
+        cand = os.path.join(d, "_SEED_LIBRARY_PARSED.xlsx")
         if os.path.exists(cand):
-            ods_path = cand
+            xlsx_path = cand
             break
 
-    if not ods_path:
+    if not xlsx_path:
         st.session_state["db_status"] = "warning"
         st.session_state["db_msg"] = (
-            "⚠️ _SEED_LIBRARY_PARSED.ods not found. "
+            "⚠️ _SEED_LIBRARY_PARSED.xlsx not found. "
             "Place it in the same folder as streamlit_app.py."
         )
         return
 
     try:
-        with zipfile.ZipFile(ods_path) as zf:
-            tree = ET.parse(zf.open("content.xml"))
-        root  = tree.getroot()
-        sheet = root.findall(f".//{{{NS_TABLE}}}table")[0]
-        rows  = sheet.findall(f"{{{NS_TABLE}}}table-row")
+        # Read xlsx using openpyxl
+        import openpyxl
+        wb  = openpyxl.load_workbook(xlsx_path, read_only=True, data_only=True)
+        ws  = wb.active
+        all_rows = list(ws.iter_rows(values_only=True))
+        wb.close()
 
-        def cell_val(cell):
-            return " ".join(
-                "".join(p.itertext())
-                for p in cell.iter(f"{{{NS_TEXT}}}p")
-            ).strip()
+        if not all_rows:
+            raise ValueError("Spreadsheet appears to be empty.")
 
-        def expand_row(tr):
-            cells = []
-            for cell in tr:
-                tag = cell.tag.split("}")[-1]
-                if tag not in ("table-cell", "covered-table-cell"):
-                    continue
-                repeat = int(cell.get(
-                    f"{{{NS_TABLE}}}number-columns-repeated", 1))
-                repeat = min(repeat, 50)
-                val = cell_val(cell)
-                cells.extend([val] * repeat)
-            return cells
-
-        headers = expand_row(rows[0])
+        # First row = headers
+        headers = [str(h).strip() if h is not None else "" for h in all_rows[0]]
 
         def ci(name):
             try:    return headers.index(name)
             except: return -1
 
         col_idx = {
-            "FileNumber":        ci("FileNumber"),
-            "Family":            ci("Family"),
-            "Variety":           ci("Variety"),
-            "SeedSource":        ci("Seed Source"),
-            "Comments":          ci("Comments"),
-            "NumSeeds":          ci("# of Seeds"),
-            "Season":            ci("Season"),
-            "SeedSaverLevel":    ci("Seed Saver Level"),
-            "HybridDoNotSave":   ci("Hybrid-Do Not Save"),
-            "Edible":            ci("Edible"),
-            "WhereGrown":        ci("Where Grown"),
-            "PerennialAnnual":   ci("Perennial/Annual"),
-            "GrownBy":           ci("Grown By"),
-            "Year":              ci("Year"),
-            "SoilTemperature":   ci("Soil Temperature"),
-            "Germination":       ci("Germination"),
+            "FileNumber":      ci("FileNumber"),
+            "Family":          ci("Family"),
+            "Variety":         ci("Variety"),
+            "SeedSource":      ci("Seed Source"),
+            "Comments":        ci("Comments"),
+            "NumSeeds":        ci("# of Seeds"),
+            "Season":          ci("Season"),
+            "SeedSaverLevel":  ci("Seed Saver Level"),
+            "HybridDoNotSave": ci("Hybrid-Do Not Save"),
+            "Edible":          ci("Edible"),
+            "WhereGrown":      ci("Where Grown"),
+            "PerennialAnnual": ci("Perennial/Annual"),
+            "GrownBy":         ci("Grown By"),
+            "Year":            ci("Year"),
+            "SoilTemperature": ci("Soil Temperature"),
+            "Germination":     ci("Germination"),
         }
 
-        def get(vals, key):
+        def get(row_vals, key):
             idx = col_idx.get(key, -1)
-            if idx < 0 or idx >= len(vals):
+            if idx < 0 or idx >= len(row_vals):
                 return ""
-            return vals[idx]
+            v = row_vals[idx]
+            return str(v).strip() if v is not None else ""
 
         inserted = 0
-        for tr in rows[1:]:
-            vals = expand_row(tr)
-            fn_raw = get(vals, "FileNumber").strip()
-            if not fn_raw:
+        for row_vals in all_rows[1:]:
+            fn_raw = get(row_vals, "FileNumber")
+            if not fn_raw or fn_raw == "None":
                 continue
             try:
                 fn = int(float(fn_raw))
             except:
                 continue
-            yr_raw = get(vals, "Year").strip()
+            yr_raw = get(row_vals, "Year")
             try:
-                yr = str(int(float(yr_raw))) if yr_raw else ""
+                yr = str(int(float(yr_raw))) if yr_raw and yr_raw != "None" else ""
             except:
                 yr = yr_raw
             conn.execute(
                 "INSERT OR REPLACE INTO seeds VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (fn,
-                 get(vals, "Family"), get(vals, "Variety"),
-                 get(vals, "SeedSource"), get(vals, "Comments"),
-                 get(vals, "NumSeeds"), get(vals, "Season"),
-                 get(vals, "SeedSaverLevel"), get(vals, "HybridDoNotSave"),
-                 get(vals, "Edible"), get(vals, "WhereGrown"),
-                 get(vals, "PerennialAnnual"), get(vals, "GrownBy"),
-                 yr, get(vals, "SoilTemperature"), get(vals, "Germination")),
+                 get(row_vals, "Family"),    get(row_vals, "Variety"),
+                 get(row_vals, "SeedSource"), get(row_vals, "Comments"),
+                 get(row_vals, "NumSeeds"),   get(row_vals, "Season"),
+                 get(row_vals, "SeedSaverLevel"), get(row_vals, "HybridDoNotSave"),
+                 get(row_vals, "Edible"),     get(row_vals, "WhereGrown"),
+                 get(row_vals, "PerennialAnnual"), get(row_vals, "GrownBy"),
+                 yr,
+                 get(row_vals, "SoilTemperature"), get(row_vals, "Germination")),
             )
             inserted += 1
         conn.commit()
         st.session_state["db_status"] = "ok"
-        st.session_state["db_msg"]    = f"✅ Loaded {inserted} seeds."
+        st.session_state["db_msg"]    = f"✅ Loaded {inserted} seeds from xlsx."
+    except ImportError:
+        st.session_state["db_status"] = "error"
+        st.session_state["db_msg"] = (
+            "❌ openpyxl not installed. Run:  pip install openpyxl"
+        )
     except Exception as e:
         st.session_state["db_status"] = "error"
-        st.session_state["db_msg"]    = f"❌ Error loading ODS: {e}"
+        st.session_state["db_msg"]    = f"❌ Error loading xlsx: {e}"
 
 
 def db_search(term: str = "") -> list[dict]:
@@ -300,8 +286,8 @@ def db_search(term: str = "") -> list[dict]:
 def db_add(data: dict):
     conn = get_db()
     conn.execute(
-        "INSERT INTO seeds VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-        tuple(data[c] for c in COLS),
+        "INSERT INTO seeds VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        tuple(data.get(c, "") for c in COLS),
     )
     conn.commit()
 
@@ -313,14 +299,15 @@ def db_update(fn: int, data: dict):
             Family=?, Variety=?, SeedSource=?, Comments=?,
             NumSeeds=?, Season=?, SeedSaverLevel=?, HybridDoNotSave=?,
             Edible=?, WhereGrown=?, PerennialAnnual=?, GrownBy=?,
-            Year=?, SoilTemperature=?, Germination=?
+            Year=?, SoilTemperature=?, Germination=?, BackgroundInfo=?
         WHERE FileNumber=?
     """, (
         data["Family"], data["Variety"], data["SeedSource"], data["Comments"],
         data["NumSeeds"], data["Season"], data["SeedSaverLevel"],
         data["HybridDoNotSave"], data["Edible"], data["WhereGrown"],
         data["PerennialAnnual"], data["GrownBy"], data["Year"],
-        data["SoilTemperature"], data["Germination"], fn,
+        data["SoilTemperature"], data["Germination"],
+        data.get("BackgroundInfo", ""), fn,
     ))
     conn.commit()
 
@@ -346,8 +333,13 @@ def db_count() -> int:
 # ─────────────────────────────────────────────────────────────
 # PDF GENERATION
 # ─────────────────────────────────────────────────────────────
-def generate_labels_pdf(label_data: list) -> bytes | None:
-    """Returns PDF bytes or None on error."""
+def generate_labels_pdf(label_data: list,
+                        include_background: bool = False) -> bytes | None:
+    """Returns PDF bytes or None on error.
+    If include_background=True, appends a separate background-info label
+    for each seed that has BackgroundInfo text.
+    Hybrid warning is printed on every label where HybridDoNotSave is set.
+    """
     try:
         from reportlab.lib.pagesizes import letter
         from reportlab.lib.units    import inch
@@ -360,9 +352,13 @@ def generate_labels_pdf(label_data: list) -> bytes | None:
         st.error("ReportLab not installed. Run:  pip install reportlab")
         return None
 
-    labels = []
+    labels = []      # (row, is_bg_label)
     for row, qty in label_data:
-        labels.extend([row] * qty)
+        for _ in range(qty):
+            labels.append((row, False))
+        # Add one background info label per seed (not per qty)
+        if include_background and (row.get("BackgroundInfo") or "").strip():
+            labels.append((row, True))
     if not labels:
         return None
 
@@ -389,11 +385,11 @@ def generate_labels_pdf(label_data: list) -> bytes | None:
         textColor=colors.red, alignment=TA_LEFT, leading=12, spaceAfter=1)
     var_sty = ParagraphStyle("var", fontSize=10, fontName="Helvetica-Oblique",
         textColor=colors.black, alignment=TA_LEFT, leading=12, spaceAfter=2)
-    cmt_sty = ParagraphStyle("cmt", fontSize=7, fontName="Helvetica",
+    cmt_sty = ParagraphStyle("cmt", fontSize=9, fontName="Helvetica",
         textColor=colors.black, alignment=TA_LEFT, leading=11, spaceAfter=0)
-    rgt_sty = ParagraphStyle("rgt", fontSize=8, fontName="Helvetica",
+    rgt_sty = ParagraphStyle("rgt", fontSize=9, fontName="Helvetica",
         textColor=colors.black, alignment=TA_CENTER, leading=11, spaceAfter=1)
-    rit_sty = ParagraphStyle("rit", fontSize=8, fontName="Helvetica-Oblique",
+    rit_sty = ParagraphStyle("rit", fontSize=9, fontName="Helvetica-Oblique",
         textColor=colors.black, alignment=TA_CENTER, leading=11, spaceAfter=1)
     svr_sty = ParagraphStyle("svr", fontSize=7, fontName="Helvetica-Bold",
         textColor=colors.black, alignment=TA_CENTER, leading=9,
@@ -408,7 +404,7 @@ def generate_labels_pdf(label_data: list) -> bytes | None:
     while page_idx * PER_PAGE < len(labels):
         page_labels = labels[page_idx * PER_PAGE : (page_idx + 1) * PER_PAGE]
 
-        for slot, row in enumerate(page_labels):
+        for slot, (row, is_bg) in enumerate(page_labels):
             col_num = slot % COLS
             row_num = slot // COLS
             lx = MARGIN_LEFT + col_num * LABEL_W
@@ -429,6 +425,8 @@ def generate_labels_pdf(label_data: list) -> bytes | None:
             saver    = (row.get("SeedSaverLevel")  or "").strip()
             germ     = (row.get("Germination")     or "").strip()
             soil_t   = (row.get("SoilTemperature") or "").strip()
+            hybrid   = (row.get("HybridDoNotSave") or "").strip()
+            bg_info  = " ".join((row.get("BackgroundInfo") or "").split())
 
             # Title
             tx = lx + PAD_L
@@ -453,31 +451,50 @@ def generate_labels_pdf(label_data: list) -> bytes | None:
             vdiv_x = body_x + left_w + 2
             c.line(vdiv_x, ly + PAD_B + 2, vdiv_x, div_y - 2)
 
-            # Left
-            left_items = [Paragraph(family, fam_sty)]
-            if variety: left_items.append(Paragraph(variety, var_sty))
-            if comment: left_items.append(Paragraph(comment, cmt_sty))
-            Frame(body_x, body_y, left_w - 4, body_h,
-                  leftPadding=0, rightPadding=0,
-                  topPadding=0, bottomPadding=0, showBoundary=0
-                  ).addFromList(left_items, c)
+            if is_bg:
+                # ── Background Info label ──────────────────────────
+                bg_title_frame = Frame(tx, ty, tw, TITLE_H,
+                    leftPadding=0, rightPadding=0,
+                    topPadding=0, bottomPadding=0, showBoundary=0)
+                bg_title_frame.addFromList(
+                    [Paragraph(f"{family} — Background Info", title_sty)], c)
+                bg_body = ParagraphStyle("bgbody", fontSize=8,
+                    fontName="Helvetica", textColor=colors.black,
+                    alignment=TA_LEFT, leading=10, spaceAfter=2)
+                Frame(body_x, body_y, body_w, body_h,
+                    leftPadding=0, rightPadding=0,
+                    topPadding=0, bottomPadding=0, showBoundary=0
+                    ).addFromList([Paragraph(bg_info, bg_body)], c)
+            else:
+                # ── Standard seed label ────────────────────────────
+                left_items = [Paragraph(family, fam_sty)]
+                if variety: left_items.append(Paragraph(variety, var_sty))
+                if hybrid:  left_items.append(Paragraph(
+                    f"⚠ {hybrid}", ParagraphStyle("hyb", fontSize=7,
+                    fontName="Helvetica-Bold",
+                    textColor=colors.HexColor("#b71c1c"),
+                    alignment=TA_LEFT, leading=9)))
+                if comment: left_items.append(Paragraph(comment, cmt_sty))
+                Frame(body_x, body_y, left_w - 4, body_h,
+                      leftPadding=0, rightPadding=0,
+                      topPadding=0, bottomPadding=0, showBoundary=0
+                      ).addFromList(left_items, c)
 
-            # Right
-            right_items = []
-            if year_val: right_items.append(Paragraph(year_val, rgt_sty))
-            if edible:   right_items.append(Paragraph(edible.upper(), rgt_sty))
-            if season:   right_items.append(Paragraph(season, rit_sty))
-            if numseeds: right_items.append(Paragraph(f"{numseeds} Seeds", rgt_sty))
-            if saver:    right_items.append(Paragraph(saver, svr_sty))
-            germ_text = germ
-            if soil_t:
-                germ_text += f"\n@ {soil_t}" if germ else soil_t
-            if germ_text:
-                right_items.append(Paragraph(f"Germ: {germ_text}", grm_sty))
-            Frame(vdiv_x + 3, body_y, right_w - 4, body_h,
-                  leftPadding=0, rightPadding=0,
-                  topPadding=0, bottomPadding=0, showBoundary=0
-                  ).addFromList(right_items, c)
+                right_items = []
+                if year_val: right_items.append(Paragraph(year_val, rgt_sty))
+                if edible:   right_items.append(Paragraph(edible.upper(), rgt_sty))
+                if season:   right_items.append(Paragraph(season, rit_sty))
+                if numseeds: right_items.append(Paragraph(f"{numseeds} Seeds", rgt_sty))
+                if saver:    right_items.append(Paragraph(saver, svr_sty))
+                germ_text = germ
+                if soil_t:
+                    germ_text += f"\n@ {soil_t}" if germ else soil_t
+                if germ_text:
+                    right_items.append(Paragraph(f"Germ: {germ_text}", grm_sty))
+                Frame(vdiv_x + 3, body_y, right_w - 4, body_h,
+                      leftPadding=0, rightPadding=0,
+                      topPadding=0, bottomPadding=0, showBoundary=0
+                      ).addFromList(right_items, c)
 
         c.showPage()
         page_idx += 1
@@ -515,6 +532,7 @@ FIELD_LABELS = {
     "Year":            "Year",
     "SoilTemperature": "Soil Temperature",
     "Germination":     "Germination",
+    "BackgroundInfo":  "Background Info",
 }
 
 SEASON_OPTS   = ["", "Cool Season", "Warm Season", "Hot Season",
@@ -550,16 +568,16 @@ def page_home():
     with col1:
         st.markdown("#### Navigate to:")
         if st.button("📋  Browse Seeds",      use_container_width=True):
-            st.session_state.page = "Browse"
+            st.session_state.nav_radio = "Browse Seeds"
             st.rerun()
         if st.button("➕  Add Seeds",         use_container_width=True):
-            st.session_state.page = "Add"
+            st.session_state.nav_radio = "Add Seeds"
             st.rerun()
         if st.button("🗑   Remove Seeds",      use_container_width=True):
-            st.session_state.page = "Remove"
+            st.session_state.nav_radio = "Remove Seeds"
             st.rerun()
         if st.button("🖨   Print Seed Labels", use_container_width=True):
-            st.session_state.page = "Labels"
+            st.session_state.nav_radio = "Print Labels"
             st.rerun()
 
     with col2:
@@ -655,12 +673,19 @@ def page_browse():
     chosen_row = next((r for r in rows if r["FileNumber"] == chosen_fn), None)
 
     if chosen_row:
-        edit_mode = st.checkbox("Edit Mode", key="browse_edit_mode")
-
-        if edit_mode:
-            _browse_edit_form(chosen_row)
-        else:
+        action = st.radio(
+            "Action",
+            ["View", "Edit", "Duplicate as New Record"],
+            horizontal=True,
+            key="browse_action",
+        )
+        st.markdown("---")
+        if action == "View":
             _browse_detail(chosen_row)
+        elif action == "Edit":
+            _browse_edit_form(chosen_row, is_duplicate=False)
+        elif action == "Duplicate as New Record":
+            _browse_duplicate_form(chosen_row)
 
 
 def _browse_detail(row: dict):
@@ -677,13 +702,16 @@ def _browse_detail(row: dict):
     with col2:
         for f in right_fields:
             st.markdown(f"**{FIELD_LABELS[f]}:** {row.get(f,'') or '—'}")
+    bg = row.get("BackgroundInfo", "")
+    if bg:
+        st.markdown(f"**Background Info:** {bg}")
 
 
-def _browse_edit_form(row: dict):
+def _browse_edit_form(row: dict, is_duplicate: bool = False):
     """Editable form for the selected row."""
     fn = row["FileNumber"]
     st.markdown(f"**Editing File #{fn}**")
-    with st.form(key=f"edit_form_{fn}"):
+    with st.form(key=f"edit_form_{fn}_{is_duplicate}"):
         c1, c2 = st.columns(2)
         with c1:
             family  = st.text_input("Family",       value=row.get("Family",""))
@@ -711,6 +739,8 @@ def _browse_edit_form(row: dict):
             hybrid  = st.text_input("Hybrid-Do Not Save", value=row.get("HybridDoNotSave",""))
             soil_t  = st.text_input("Soil Temperature",   value=row.get("SoilTemperature",""))
             germ    = st.text_input("Germination",        value=row.get("Germination",""))
+        bg_info = st.text_area("Background Info",
+                               value=row.get("BackgroundInfo",""), height=80)
 
         if st.form_submit_button("💾  Save Changes", use_container_width=True):
             db_update(fn, {
@@ -721,10 +751,75 @@ def _browse_edit_form(row: dict):
                 "Edible": edible, "WhereGrown": where,
                 "PerennialAnnual": peran, "GrownBy": grown_by,
                 "Year": year, "SoilTemperature": soil_t,
-                "Germination": germ,
+                "Germination": germ, "BackgroundInfo": bg_info,
             })
             st.success(f"Seed #{fn} updated successfully.")
             st.rerun()
+
+
+def _browse_duplicate_form(source_row: dict):
+    """Duplicate a seed record with a new file number."""
+    next_fn = db_next_fn()
+    st.info(f"Duplicating **#{source_row['FileNumber']} {source_row['Family']} — "
+            f"{source_row['Variety']}** as new record **#{next_fn}**. "
+            "Edit any fields then save.")
+    with st.form(key=f"dup_form_{source_row['FileNumber']}"):
+        c1, c2 = st.columns(2)
+        with c1:
+            fn      = st.number_input("File Number *", value=next_fn,
+                                      min_value=1, step=1)
+            family  = st.text_input("Family",     value=source_row.get("Family",""))
+            variety = st.text_input("Variety",    value=source_row.get("Variety",""))
+            source  = st.text_input("Seed Source",value=source_row.get("SeedSource",""))
+            comments= st.text_area("Comments",    value=source_row.get("Comments",""), height=80)
+            grown_by= st.text_input("Grown By",   value=source_row.get("GrownBy",""))
+            where   = st.text_input("Where Grown",value=source_row.get("WhereGrown",""))
+        with c2:
+            year    = st.text_input("Year",       value=source_row.get("Year",""))
+            numseeds= st.text_input("# of Seeds", value=source_row.get("NumSeeds",""))
+            edible  = st.text_input("Edible",     value=source_row.get("Edible",""))
+            season_v = source_row.get("Season","")
+            season  = st.selectbox("Season", SEASON_OPTS,
+                                   index=SEASON_OPTS.index(season_v)
+                                   if season_v in SEASON_OPTS else 0)
+            saver_v = source_row.get("SeedSaverLevel","")
+            saver   = st.selectbox("Seed Saver Level", SAVER_OPTS,
+                                   index=SAVER_OPTS.index(saver_v)
+                                   if saver_v in SAVER_OPTS else 0)
+            peran_v = source_row.get("PerennialAnnual","")
+            peran   = st.selectbox("Perennial/Annual", PERAN_OPTS,
+                                   index=PERAN_OPTS.index(peran_v)
+                                   if peran_v in PERAN_OPTS else 0)
+            hybrid  = st.text_input("Hybrid-Do Not Save",
+                                    value=source_row.get("HybridDoNotSave",""))
+            soil_t  = st.text_input("Soil Temperature",
+                                    value=source_row.get("SoilTemperature",""))
+            germ    = st.text_input("Germination",
+                                    value=source_row.get("Germination",""))
+        bg_info = st.text_area("Background Info",
+                               value=source_row.get("BackgroundInfo",""), height=80)
+
+        if st.form_submit_button("💾  Save as New Record", use_container_width=True):
+            fn = int(fn)
+            conn = get_db()
+            existing = conn.execute(
+                "SELECT 1 FROM seeds WHERE FileNumber=?", (fn,)).fetchone()
+            if existing:
+                st.error(f"File #{fn} already exists. Choose a different number.")
+            else:
+                db_add({
+                    "FileNumber": fn, "Family": family, "Variety": variety,
+                    "SeedSource": source, "Comments": comments,
+                    "NumSeeds": numseeds, "Season": season,
+                    "SeedSaverLevel": saver, "HybridDoNotSave": hybrid,
+                    "Edible": edible, "WhereGrown": where,
+                    "PerennialAnnual": peran, "GrownBy": grown_by,
+                    "Year": year, "SoilTemperature": soil_t,
+                    "Germination": germ, "BackgroundInfo": bg_info,
+                })
+                st.success(f"✅ New seed #{fn} saved as a duplicate of "
+                           f"#{source_row['FileNumber']}.")
+                st.rerun()
 
 
 # ─────────────────────────────────────────────────────────────
@@ -757,6 +852,7 @@ def page_add():
             hybrid  = st.text_input("Hybrid-Do Not Save")
             soil_t  = st.text_input("Soil Temperature")
             germ    = st.text_input("Germination")
+        bg_info = st.text_area("Background Info", height=80)
 
         submitted = st.form_submit_button("💾  Save Seed", use_container_width=True)
 
@@ -780,7 +876,7 @@ def page_add():
                     "Edible": edible, "WhereGrown": where,
                     "PerennialAnnual": peran, "GrownBy": grown_by,
                     "Year": year, "SoilTemperature": soil_t,
-                    "Germination": germ,
+                    "Germination": germ, "BackgroundInfo": bg_info,
                 })
                 st.success(f"✅ Seed #{fn} — {family} added successfully!")
 
@@ -901,6 +997,10 @@ def page_labels():
 
     st.caption("Set **Qty** to 1 or more to include in print job. "
                "Uncheck **Print** or set Qty to 0 to exclude.")
+    include_bg = st.checkbox(
+        "Also print Background Info as a separate label for each selected seed",
+        key="label_include_bg",
+    )
 
     edited = st.data_editor(
         df,
@@ -959,7 +1059,9 @@ def page_labels():
         if st.button("🖨  Generate & Download PDF",
                      type="primary", use_container_width=True):
             with st.spinner("Generating PDF…"):
-                pdf_bytes = generate_labels_pdf(label_data)
+                pdf_bytes = generate_labels_pdf(
+                    label_data,
+                    include_background=st.session_state.get("label_include_bg", False))
             if pdf_bytes:
                 st.download_button(
                     label="⬇️  Download seed_labels.pdf",
