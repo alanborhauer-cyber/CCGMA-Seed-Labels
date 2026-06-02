@@ -569,16 +569,16 @@ def page_home():
     with col1:
         st.markdown("#### Navigate to:")
         if st.button("📋  Browse Seeds",      use_container_width=True):
-            st.session_state.nav_radio = "Browse Seeds"
+            st.session_state.nav_target = "Browse Seeds"
             st.rerun()
         if st.button("➕  Add Seeds",         use_container_width=True):
-            st.session_state.nav_radio = "Add Seeds"
+            st.session_state.nav_target = "Add Seeds"
             st.rerun()
         if st.button("🗑   Remove Seeds",      use_container_width=True):
-            st.session_state.nav_radio = "Remove Seeds"
+            st.session_state.nav_target = "Remove Seeds"
             st.rerun()
         if st.button("🖨   Print Seed Labels", use_container_width=True):
-            st.session_state.nav_radio = "Print Labels"
+            st.session_state.nav_target = "Print Labels"
             st.rerun()
 
     with col2:
@@ -1082,16 +1082,27 @@ def page_labels():
 # SIDEBAR NAVIGATION
 # ─────────────────────────────────────────────────────────────
 def sidebar_nav():
+    PAGES = ["Home", "Browse Seeds", "Add Seeds", "Remove Seeds", "Print Labels"]
+
+    # If a home-page button set a nav_target, use it as the default index
+    target = st.session_state.pop("nav_target", None)
+    if target and target in PAGES:
+        default_idx = PAGES.index(target)
+        st.session_state["_nav_index"] = default_idx
+    current_idx = st.session_state.get("_nav_index", 0)
+
     with st.sidebar:
         st.markdown("## 🌹 CCMGA\n### Seed Library")
         st.markdown("---")
         page = st.radio(
             "Navigate",
-            ["Home", "Browse Seeds", "Add Seeds",
-             "Remove Seeds", "Print Labels"],
+            PAGES,
+            index=current_idx,
             key="nav_radio",
             label_visibility="collapsed",
         )
+        # Keep index in sync with radio selection
+        st.session_state["_nav_index"] = PAGES.index(page)
         st.markdown("---")
         st.markdown(
             "<small>Cochise County Master Gardener Association<br/>"
@@ -1112,31 +1123,17 @@ def main():
     # Gate — must authenticate before anything else renders
     check_password()
 
-    # Initialise session state
-    if "page" not in st.session_state:
-        st.session_state.page = "Home"
-
     selected = sidebar_nav()
 
-    # Sidebar radio takes priority; button clicks update session_state.page
-    page_map = {
-        "Home":         "Home",
-        "Browse Seeds": "Browse",
-        "Add Seeds":    "Add",
-        "Remove Seeds": "Remove",
-        "Print Labels": "Labels",
-    }
-    active_page = page_map.get(selected, st.session_state.page)
-
-    if active_page == "Home":
+    if selected == "Home":
         page_home()
-    elif active_page == "Browse":
+    elif selected == "Browse Seeds":
         page_browse()
-    elif active_page == "Add":
+    elif selected == "Add Seeds":
         page_add()
-    elif active_page == "Remove":
+    elif selected == "Remove Seeds":
         page_remove()
-    elif active_page == "Labels":
+    elif selected == "Print Labels":
         page_labels()
 
 
