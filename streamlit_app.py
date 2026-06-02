@@ -411,7 +411,11 @@ def generate_labels_pdf(label_data: list,
             lx = MARGIN_LEFT + col_num * LABEL_W
             ly = PAGE_H - MARGIN_TOP - (row_num + 1) * LABEL_H
 
-            # Extract fields (needed for both label types)
+            # Border
+            c.setStrokeColor(BORDER)
+            c.setLineWidth(0.75)
+            c.rect(lx, ly, LABEL_W, LABEL_H, fill=0, stroke=1)
+
             family   = (row.get("Family")          or "").strip()
             variety  = (row.get("Variety")         or "").strip()
             season   = (row.get("Season")          or "").strip()
@@ -425,71 +429,49 @@ def generate_labels_pdf(label_data: list,
             hybrid   = (row.get("HybridDoNotSave") or "").strip()
             bg_info  = " ".join((row.get("BackgroundInfo") or "").split())
 
-            # No borders on any label
-            # Common layout measurements
-            tx     = lx + PAD_L
-            tw     = LABEL_W - PAD_L - PAD_R
+            # Title
+            tx = lx + PAD_L
+            ty = ly + LABEL_H - PAD_T - TITLE_H
+            tw = LABEL_W - PAD_L - PAD_R
+            Frame(tx, ty, tw, TITLE_H, leftPadding=0, rightPadding=0,
+                  topPadding=0, bottomPadding=0, showBoundary=0).addFromList(
+                [Paragraph("Cochise County Master Gardener Association"
+                           "<br/>Seed Library", title_sty)], c)
+
+            div_y  = ly + LABEL_H - PAD_T - TITLE_H - 1
+            c.setStrokeColor(DIVIDER)
+            c.setLineWidth(0.5)
+            c.line(lx + 2, div_y, lx + LABEL_W - 2, div_y)
+
             body_y = ly + PAD_B
+            body_h = LABEL_H - PAD_T - TITLE_H - 3 - PAD_B
             body_x = lx + PAD_L
             body_w = LABEL_W - PAD_L - PAD_R
+            left_w = body_w * LEFT_FRAC
+            right_w = body_w * (1 - LEFT_FRAC)
+            vdiv_x = body_x + left_w + 2
+            c.line(vdiv_x, ly + PAD_B + 2, vdiv_x, div_y - 2)
 
             if is_bg:
-                # ── Background Info label — clean, no dividers, full width ──
-                # Generous padding for readability
-                BG_PAD = 10
-                full_w = LABEL_W - BG_PAD * 2
-                full_h = LABEL_H - BG_PAD * 2
-
-                # Title: "Family — Background Info"
-                bg_title_sty = ParagraphStyle("bgtitle",
-                    fontSize=10, fontName="Helvetica-Bold",
-                    textColor=colors.black, alignment=TA_LEFT,
-                    leading=13, spaceAfter=4)
-                bg_body_sty = ParagraphStyle("bgbody",
-                    fontSize=9, fontName="Helvetica",
-                    textColor=colors.black, alignment=TA_LEFT,
-                    leading=12, spaceAfter=0)
-
-                all_bg = [
-                    Paragraph(f"{family}", bg_title_sty),
-                    Paragraph(f"{variety} — Background Information", bg_title_sty),
-                    Paragraph(bg_info, bg_body_sty),
-                ]
-                Frame(lx + BG_PAD, ly + BG_PAD, full_w, full_h,
-                      leftPadding=0, rightPadding=0,
-                      topPadding=0, bottomPadding=0,
-                      showBoundary=0).addFromList(all_bg, c)
-
+                # ── Background Info label ──────────────────────────
+                bg_title_frame = Frame(tx, ty, tw, TITLE_H,
+                    leftPadding=0, rightPadding=0,
+                    topPadding=0, bottomPadding=0, showBoundary=0)
+                bg_title_frame.addFromList(
+                    [Paragraph(f"{family} — Background Info", title_sty)], c)
+                bg_body = ParagraphStyle("bgbody", fontSize=8,
+                    fontName="Helvetica", textColor=colors.black,
+                    alignment=TA_LEFT, leading=10, spaceAfter=2)
+                Frame(body_x, body_y, body_w, body_h,
+                    leftPadding=0, rightPadding=0,
+                    topPadding=0, bottomPadding=0, showBoundary=0
+                    ).addFromList([Paragraph(bg_info, bg_body)], c)
             else:
                 # ── Standard seed label ────────────────────────────
-                TITLE_H_USE = TITLE_H
-                ty     = ly + LABEL_H - PAD_T - TITLE_H_USE
-                body_h = LABEL_H - PAD_T - TITLE_H_USE - 3 - PAD_B
-                left_w = body_w * LEFT_FRAC
-                right_w = body_w * (1 - LEFT_FRAC)
-                vdiv_x = body_x + left_w + 2
-
-                # Header
-                Frame(tx, ty, tw, TITLE_H_USE, leftPadding=0, rightPadding=0,
-                      topPadding=0, bottomPadding=0, showBoundary=0).addFromList(
-                    [Paragraph("Cochise County Master Gardener Association"
-                               "<br/>Seed Library", title_sty)], c)
-
-                # Thin horizontal divider under header
-                div_y = ly + LABEL_H - PAD_T - TITLE_H_USE - 1
-                c.setStrokeColor(DIVIDER)
-                c.setLineWidth(0.5)
-                c.line(lx + 2, div_y, lx + LABEL_W - 2, div_y)
-
-                # Vertical divider between left and right cells
-                c.line(vdiv_x, ly + PAD_B + 2, vdiv_x, div_y - 2)
-
-                # Left cell
                 left_items = [Paragraph(family, fam_sty)]
                 if variety: left_items.append(Paragraph(variety, var_sty))
                 if hybrid:  left_items.append(Paragraph(
-                    f"* HYBRID — DO NOT SAVE SEEDS *",
-                    ParagraphStyle("hyb", fontSize=7,
+                    f"⚠ {hybrid}", ParagraphStyle("hyb", fontSize=7,
                     fontName="Helvetica-Bold",
                     textColor=colors.HexColor("#b71c1c"),
                     alignment=TA_LEFT, leading=9)))
@@ -499,7 +481,6 @@ def generate_labels_pdf(label_data: list,
                       topPadding=0, bottomPadding=0, showBoundary=0
                       ).addFromList(left_items, c)
 
-                # Right cell
                 right_items = []
                 if year_val: right_items.append(Paragraph(year_val, rgt_sty))
                 if edible:   right_items.append(Paragraph(edible.upper(), rgt_sty))
