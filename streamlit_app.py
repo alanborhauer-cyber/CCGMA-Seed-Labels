@@ -242,7 +242,7 @@ def _load_xlsx(conn: sqlite3.Connection):
             except:
                 yr = yr_raw
             conn.execute(
-                "INSERT OR REPLACE INTO seeds VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                "INSERT OR REPLACE INTO seeds VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (fn,
                  get(row_vals, "Family"),    get(row_vals, "Variety"),
                  get(row_vals, "SeedSource"), get(row_vals, "Comments"),
@@ -251,7 +251,8 @@ def _load_xlsx(conn: sqlite3.Connection):
                  get(row_vals, "Edible"),     get(row_vals, "WhereGrown"),
                  get(row_vals, "PerennialAnnual"), get(row_vals, "GrownBy"),
                  yr,
-                 get(row_vals, "SoilTemperature"), get(row_vals, "Germination")),
+                 get(row_vals, "SoilTemperature"), get(row_vals, "Germination"),
+                 get(row_vals, "BackgroundInfo")),
             )
             inserted += 1
         conn.commit()
