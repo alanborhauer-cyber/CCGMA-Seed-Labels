@@ -110,59 +110,33 @@ class SeedDatabase:
         self.conn.commit()
 
     def _load_data(self):
-        """Load ODS using only Python builtins — no pandas or odfpy needed."""
+        """Load _SEED_LIBRARY_PARSED.xlsx using openpyxl."""
         script_dir = os.path.dirname(os.path.abspath(__file__))
-        ods_path = None
+        xlsx_path = None
         for d in [script_dir, os.path.dirname(script_dir), os.getcwd()]:
-            candidate = os.path.join(d, "_SEED_LIBRARY_PARSED.ods")
+            candidate = os.path.join(d, "_SEED_LIBRARY_PARSED.xlsx")
             if os.path.exists(candidate):
-                ods_path = candidate
-                print(f"Found ODS at: {ods_path}")
+                xlsx_path = candidate
+                print(f"Found xlsx at: {xlsx_path}")
                 break
 
         loaded = False
 
-        # ── Primary: raw ODS XML (no third-party packages) ──────────
-        if ods_path:
+        # ── Primary: openpyxl ────────────────────────────────────────
+        if xlsx_path:
             try:
-                import zipfile
-                import xml.etree.ElementTree as ET
-                NS = {
-                    'table': 'urn:oasis:names:tc:opendocument:xmlns:table:1.0',
-                    'text':  'urn:oasis:names:tc:opendocument:xmlns:text:1.0',
-                }
-                with zipfile.ZipFile(ods_path) as zf:
-                    tree = ET.parse(zf.open('content.xml'))
-                root = tree.getroot()
-                sheet = root.findall('.//{urn:oasis:names:tc:opendocument:xmlns:table:1.0}table')[0]
-                all_rows = sheet.findall('{urn:oasis:names:tc:opendocument:xmlns:table:1.0}table-row')
+                import openpyxl
+                wb  = openpyxl.load_workbook(xlsx_path, read_only=True, data_only=True)
+                ws  = wb.active
+                all_rows = list(ws.iter_rows(values_only=True))
+                wb.close()
 
-                def cell_val(cell):
-                    parts = []
-                    for p in cell.iter('{urn:oasis:names:tc:opendocument:xmlns:text:1.0}p'):
-                        parts.append(''.join(p.itertext()))
-                    return ' '.join(parts).strip()
+                if not all_rows:
+                    raise ValueError("Spreadsheet is empty.")
 
-                # Expand repeated columns (table:number-columns-repeated)
-                # Cap repeat at 50 to avoid huge empty trailing cells
-                def expand_row(tr):
-                    cells = []
-                    for cell in tr:
-                        tag = cell.tag.split('}')[-1]
-                        if tag not in ('table-cell', 'covered-table-cell'):
-                            continue
-                        repeat = int(cell.get(
-                            '{urn:oasis:names:tc:opendocument:xmlns:table:1.0}number-columns-repeated', 1))
-                        repeat = min(repeat, 50)
-                        val = cell_val(cell)
-                        for _ in range(repeat):
-                            cells.append(val)
-                    return cells
-
-                headers = expand_row(all_rows[0])
+                headers = [str(h).strip() if h is not None else "" for h in all_rows[0]]
                 print(f"Headers: {headers}")
 
-                # Column index map
                 def ci(name):
                     try: return headers.index(name)
                     except ValueError: return -1
@@ -186,38 +160,41 @@ class SeedDatabase:
                     'Germination':       ci('Germination'),
                 }
 
-                def get(vals, key):
+                def get(row_vals, key):
                     idx = COL.get(key, -1)
-                    if idx < 0 or idx >= len(vals): return ''
-                    return vals[idx]
+                    if idx < 0 or idx >= len(row_vals): return ''
+                    v = row_vals[idx]
+                    return str(v).strip() if v is not None else ''
 
                 inserted = 0
-                for tr in all_rows[1:]:
-                    vals = expand_row(tr)
-                    fn_raw = get(vals, 'FileNumber').strip()
-                    if not fn_raw: continue
+                for row_vals in all_rows[1:]:
+                    fn_raw = get(row_vals, 'FileNumber')
+                    if not fn_raw or fn_raw == 'None': continue
                     try: fn = int(float(fn_raw))
                     except: continue
-                    yr_raw = get(vals, 'Year').strip()
-                    try: yr = str(int(float(yr_raw))) if yr_raw else ''
+                    yr_raw = get(row_vals, 'Year')
+                    try: yr = str(int(float(yr_raw))) if yr_raw and yr_raw != 'None' else ''
                     except: yr = yr_raw
                     self.conn.execute(
                         "INSERT OR REPLACE INTO seeds VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                         (fn,
-                         get(vals,'Family'), get(vals,'Variety'),
-                         get(vals,'Seed Source'), get(vals,'Comments'),
-                         get(vals,'# of Seeds'), get(vals,'Season'),
-                         get(vals,'Seed Saver Level'), get(vals,'Hybrid-Do Not Save'),
-                         get(vals,'Edible'), get(vals,'Where Grown'),
-                         get(vals,'Perennial/Annual'), get(vals,'Grown By'),
-                         yr, get(vals,'Soil Temperature'), get(vals,'Germination')))
+                         get(row_vals,'Family'),          get(row_vals,'Variety'),
+                         get(row_vals,'Seed Source'),     get(row_vals,'Comments'),
+                         get(row_vals,'# of Seeds'),      get(row_vals,'Season'),
+                         get(row_vals,'Seed Saver Level'),get(row_vals,'Hybrid-Do Not Save'),
+                         get(row_vals,'Edible'),          get(row_vals,'Where Grown'),
+                         get(row_vals,'Perennial/Annual'),get(row_vals,'Grown By'),
+                         yr,
+                         get(row_vals,'Soil Temperature'),get(row_vals,'Germination')))
                     inserted += 1
                 self.conn.commit()
                 loaded = True
-                print(f"Loaded {inserted} seeds from ODS (no extra packages needed).")
+                print(f"Loaded {inserted} seeds from xlsx.")
+            except ImportError:
+                print("ERROR: openpyxl not installed. Run: pip3 install openpyxl")
             except Exception as e:
                 import traceback
-                print("ODS load ERROR:", e)
+                print("xlsx load ERROR:", e)
                 traceback.print_exc()
 
         # ── Fallback: CSV backup ─────────────────────────────────────
@@ -229,21 +206,22 @@ class SeedDatabase:
                     reader = csv.DictReader(f)
                     inserted = 0
                     for row in reader:
-                        try: fn = int(float(row.get('FileNumber',0)))
+                        try: fn = int(float(row.get('FileNumber', 0)))
                         except: continue
-                        yr_raw = row.get('Year','').strip()
+                        yr_raw = row.get('Year', '').strip()
                         try: yr = str(int(float(yr_raw))) if yr_raw else ''
                         except: yr = yr_raw
                         self.conn.execute(
                             "INSERT OR REPLACE INTO seeds VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                             (fn,
-                             row.get('Family',''), row.get('Variety',''),
-                             row.get('Seed Source',''), row.get('Comments',''),
-                             row.get('# of Seeds',''), row.get('Season',''),
-                             row.get('Seed Saver Level',''), row.get('Hybrid-Do Not Save',''),
-                             row.get('Edible',''), row.get('Where Grown',''),
-                             row.get('Perennial/Annual',''), row.get('Grown By',''),
-                             yr, row.get('Soil Temperature',''), row.get('Germination','')))
+                             row.get('Family',''),          row.get('Variety',''),
+                             row.get('Seed Source',''),     row.get('Comments',''),
+                             row.get('# of Seeds',''),      row.get('Season',''),
+                             row.get('Seed Saver Level',''),row.get('Hybrid-Do Not Save',''),
+                             row.get('Edible',''),          row.get('Where Grown',''),
+                             row.get('Perennial/Annual',''),row.get('Grown By',''),
+                             yr,
+                             row.get('Soil Temperature',''),row.get('Germination','')))
                         inserted += 1
                 self.conn.commit()
                 loaded = True
@@ -253,6 +231,7 @@ class SeedDatabase:
 
         if not loaded:
             print("WARNING: No seed data file found. Starting with empty database.")
+
 
     def search(self, term=''):
         if not term:
