@@ -596,6 +596,43 @@ def page_home():
 | **Credits** | Claude AI (Anthropic) + Alan Borhauer |
     """)
 
+    # ── Seeds with comments or background info over 300 chars ───────
+    conn = get_db()
+    over_limit = conn.execute("""
+        SELECT FileNumber, Family, Variety,
+               LENGTH(Comments)      AS clen,
+               LENGTH(BackgroundInfo) AS blen
+        FROM seeds
+        WHERE LENGTH(Comments) > 300
+           OR LENGTH(BackgroundInfo) > 300
+        ORDER BY Family, Variety
+    """).fetchall()
+
+    if over_limit:
+        st.markdown("---")
+        st.warning(f"⚠️ **{len(over_limit)} seed(s) have text exceeding the "
+                   "300-character label limit.** Only the first 300 characters "
+                   "will print. Edit these records to shorten the text.")
+        rows_display = []
+        for r in over_limit:
+            issues = []
+            if r["clen"] and r["clen"] > 300:
+                issues.append(f"Comments: {r['clen']} chars ({r['clen']-300} over)")
+            if r["blen"] and r["blen"] > 300:
+                issues.append(f"Background Info: {r['blen']} chars ({r['blen']-300} over)")
+            rows_display.append({
+                "File #":   r["FileNumber"],
+                "Family":   r["Family"],
+                "Variety":  r["Variety"],
+                "Issue":    "  |  ".join(issues),
+            })
+        import pandas as pd
+        st.dataframe(
+            pd.DataFrame(rows_display),
+            use_container_width=True,
+            hide_index=True,
+        )
+
 
 # ─────────────────────────────────────────────────────────────
 # PAGE: BROWSE
@@ -702,13 +739,29 @@ def _browse_detail(row: dict):
                     "SoilTemperature", "Germination", "HybridDoNotSave"]
     with col1:
         for f in left_fields:
-            st.markdown(f"**{FIELD_LABELS[f]}:** {row.get(f,'') or '—'}")
+            val = row.get(f, "") or "—"
+            # Flag comments over 300 chars
+            if f == "Comments" and len(val) > 300:
+                st.markdown(f"**{FIELD_LABELS[f]}:** {val}")
+                st.warning(f"⚠️ Comments are {len(val)} characters "
+                           f"({len(val)-300} over the 300-char label limit). "
+                           "Only the first 300 characters will print on the label.")
+            else:
+                st.markdown(f"**{FIELD_LABELS[f]}:** {val}")
     with col2:
         for f in right_fields:
             st.markdown(f"**{FIELD_LABELS[f]}:** {row.get(f,'') or '—'}")
-    bg = row.get("BackgroundInfo", "")
+
+    # Background Info — always shown in full with its own section
+    bg = (row.get("BackgroundInfo") or "").strip()
     if bg:
-        st.markdown(f"**Background Info:** {bg}")
+        st.markdown("---")
+        st.markdown("**Background Information**")
+        st.markdown(bg)
+        if len(bg) > 300:
+            st.warning(f"⚠️ Background Info is {len(bg)} characters "
+                       f"({len(bg)-300} over the 300-char label limit). "
+                       "Only the first 300 characters will print on the label.")
 
 
 def _browse_edit_form(row: dict, is_duplicate: bool = False):
