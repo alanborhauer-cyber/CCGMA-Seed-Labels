@@ -9,6 +9,7 @@ import os
 import io
 import sys
 import sqlite3
+import json
 import tempfile
 import streamlit as st
 
@@ -166,107 +167,241 @@ def get_db() -> sqlite3.Connection:
 
 
 def _load_xlsx(conn: sqlite3.Connection):
-    """Load _SEED_LIBRARY_PARSED.xlsx using openpyxl (stdlib-compatible zip+xml)."""
+    """Load seed data — tries Google Sheets first, then local xlsx."""
+    loaded = False
+
+    # ── Primary: Google Sheets (if configured in st.secrets) ────────
+    ws = _get_gsheet()
+    if ws is not None:
+        try:
+            all_rows = ws.get_all_values()
+            if all_rows:
+                headers = [str(h).strip() for h in all_rows[0]]
+                def ci_gs(name):
+                    try:    return headers.index(name)
+                    except: return -1
+                idx = {k: ci_gs(v) for k, v in COL_HEADER_MAP.items()}
+                def get_gs(rv, key):
+                    i = idx.get(key, -1)
+                    return str(rv[i]).strip() if 0 <= i < len(rv) else ""
+                inserted = 0
+                for rv in all_rows[1:]:
+                    fn_raw = get_gs(rv, "FileNumber")
+                    if not fn_raw or fn_raw == "None": continue
+                    try:    fn = int(float(fn_raw))
+                    except: continue
+                    yr = get_gs(rv, "Year")
+                    try:    yr = str(int(float(yr))) if yr and yr != "None" else ""
+                    except: pass
+                    conn.execute(
+                        "INSERT OR REPLACE INTO seeds VALUES"
+                        " (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                        (fn, get_gs(rv,"Family"), get_gs(rv,"Variety"),
+                         get_gs(rv,"SeedSource"), get_gs(rv,"Comments"),
+                         get_gs(rv,"NumSeeds"), get_gs(rv,"Season"),
+                         get_gs(rv,"SeedSaverLevel"), get_gs(rv,"HybridDoNotSave"),
+                         get_gs(rv,"Edible"), get_gs(rv,"WhereGrown"),
+                         get_gs(rv,"PerennialAnnual"), get_gs(rv,"GrownBy"), yr,
+                         get_gs(rv,"SoilTemperature"), get_gs(rv,"Germination"),
+                         get_gs(rv,"BackgroundInfo")),
+                    )
+                    inserted += 1
+                conn.commit()
+                loaded = True
+                st.session_state["db_status"] = "ok"
+                st.session_state["db_msg"] = f"✅ Loaded {inserted} seeds from Google Sheets."
+        except Exception as e:
+            st.session_state["db_status"] = "warning"
+            st.session_state["db_msg"] = f"⚠️ Google Sheets error: {e}. Trying local xlsx…"
+
+    # ── Fallback: local xlsx ─────────────────────────────────────────
+    if not loaded:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        xlsx_path  = None
+        for d in [script_dir, os.path.dirname(script_dir), os.getcwd()]:
+            cand = os.path.join(d, "_SEED_LIBRARY_PARSED.xlsx")
+            if os.path.exists(cand):
+                xlsx_path = cand
+                print(f"Found xlsx at: {xlsx_path}")
+                break
+        if not xlsx_path:
+            st.session_state["db_status"] = "warning"
+            st.session_state["db_msg"] = (
+                "⚠️ _SEED_LIBRARY_PARSED.xlsx not found and Google Sheets not configured. "
+                "Place the xlsx alongside streamlit_app.py, or add GSheet secrets.")
+            return
+        try:
+            import openpyxl
+            wb       = openpyxl.load_workbook(xlsx_path, read_only=True, data_only=True)
+            ws_xl    = wb.active
+            all_rows = list(ws_xl.iter_rows(values_only=True))
+            wb.close()
+            if not all_rows:
+                raise ValueError("Spreadsheet is empty.")
+            headers2 = [str(h).strip() if h is not None else "" for h in all_rows[0]]
+            def ci2(name):
+                try:    return headers2.index(name)
+                except: return -1
+            idx2 = {k: ci2(v) for k, v in COL_HEADER_MAP.items()}
+            def get2(rv, key):
+                i = idx2.get(key, -1)
+                if i < 0 or i >= len(rv): return ""
+                v = rv[i]
+                return str(v).strip() if v is not None else ""
+            inserted = 0
+            for rv in all_rows[1:]:
+                fn_raw = get2(rv, "FileNumber")
+                if not fn_raw or fn_raw == "None": continue
+                try:    fn = int(float(fn_raw))
+                except: continue
+                yr = get2(rv, "Year")
+                try:    yr = str(int(float(yr))) if yr and yr != "None" else ""
+                except: pass
+                conn.execute(
+                    "INSERT OR REPLACE INTO seeds VALUES"
+                    " (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    (fn, get2(rv,"Family"), get2(rv,"Variety"),
+                     get2(rv,"SeedSource"), get2(rv,"Comments"),
+                     get2(rv,"NumSeeds"), get2(rv,"Season"),
+                     get2(rv,"SeedSaverLevel"), get2(rv,"HybridDoNotSave"),
+                     get2(rv,"Edible"), get2(rv,"WhereGrown"),
+                     get2(rv,"PerennialAnnual"), get2(rv,"GrownBy"), yr,
+                     get2(rv,"SoilTemperature"), get2(rv,"Germination"),
+                     get2(rv,"BackgroundInfo")),
+                )
+                inserted += 1
+            conn.commit()
+            st.session_state["db_status"] = "ok"
+            st.session_state["db_msg"]    = f"✅ Loaded {inserted} seeds from xlsx."
+        except ImportError:
+            st.session_state["db_status"] = "error"
+            st.session_state["db_msg"]    = "❌ openpyxl not installed. Run: pip install openpyxl"
+        except Exception as e:
+            import traceback; traceback.print_exc()
+            st.session_state["db_status"] = "error"
+            st.session_state["db_msg"]    = f"❌ xlsx load error: {e}"
+
+
+
+# ── Column header mapping (internal key → spreadsheet column name) ────────
+COL_HEADER_MAP = {
+    "FileNumber":      "FileNumber",
+    "Family":          "Family",
+    "Variety":         "Variety",
+    "SeedSource":      "Seed Source",
+    "Comments":        "Comments",
+    "NumSeeds":        "# of Seeds",
+    "Season":          "Season",
+    "SeedSaverLevel":  "Seed Saver Level",
+    "HybridDoNotSave": "Hybrid-Do Not Save",
+    "Edible":          "Edible",
+    "WhereGrown":      "Where Grown",
+    "PerennialAnnual": "Perennial/Annual",
+    "GrownBy":         "Grown By",
+    "Year":            "Year",
+    "SoilTemperature": "Soil Temperature",
+    "Germination":     "Germination",
+    "BackgroundInfo":  "Background Info",
+}
+SHEET_HEADERS = list(COL_HEADER_MAP.values())
+
+
+def _get_gsheet():
+    """
+    Return a gspread Worksheet using credentials from st.secrets.
+    Secrets must contain:
+        [gcp_service_account]   — the full JSON key as a TOML table
+        GSHEET_ID               — the Google Sheet ID (from the URL)
+        GSHEET_TAB              — worksheet tab name (default "Sheet1")
+    Returns None if not configured.
+    """
+    try:
+        import gspread
+        from google.oauth2.service_account import Credentials
+        creds_dict = dict(st.secrets["gcp_service_account"])
+        creds = Credentials.from_service_account_info(
+            creds_dict,
+            scopes=[
+                "https://spreadsheets.google.com/feeds",
+                "https://www.googleapis.com/auth/drive",
+            ],
+        )
+        gc      = gspread.authorize(creds)
+        sh      = gc.open_by_key(st.secrets["GSHEET_ID"])
+        tab     = st.secrets.get("GSHEET_TAB", "Sheet1")
+        return sh.worksheet(tab)
+    except Exception:
+        return None
+
+
+def _find_xlsx_path() -> str | None:
+    """Find the local xlsx file path."""
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    xlsx_path = None
     for d in [script_dir, os.path.dirname(script_dir), os.getcwd()]:
         cand = os.path.join(d, "_SEED_LIBRARY_PARSED.xlsx")
         if os.path.exists(cand):
-            xlsx_path = cand
-            break
+            return cand
+    return None
 
+
+def save_to_xlsx():
+    """
+    Persist all in-memory rows.
+    Priority:
+      1. Google Sheets (if configured in st.secrets)
+      2. Local xlsx file (for local development)
+    """
+    conn  = get_db()
+    rows  = conn.execute("SELECT * FROM seeds ORDER BY FileNumber").fetchall()
+
+    # ── Try Google Sheets first ──────────────────────────────────────
+    ws = _get_gsheet()
+    if ws is not None:
+        try:
+            # Build list of lists: header row + data rows
+            data = [SHEET_HEADERS]
+            for row in rows:
+                rd = dict(row)
+                data.append([rd.get(k, "") for k in COL_HEADER_MAP.keys()])
+            # Clear the sheet and rewrite from A1
+            ws.clear()
+            ws.update("A1", data, value_input_option="RAW")
+            return True
+        except Exception as e:
+            st.warning(f"Google Sheets save error: {e}. Trying local xlsx…")
+
+    # ── Fallback: local xlsx ─────────────────────────────────────────
+    xlsx_path = _find_xlsx_path()
     if not xlsx_path:
-        st.session_state["db_status"] = "warning"
-        st.session_state["db_msg"] = (
-            "⚠️ _SEED_LIBRARY_PARSED.xlsx not found. "
-            "Place it in the same folder as streamlit_app.py."
-        )
-        return
-
+        st.warning("No save destination found (no Google Sheets config and "
+                   "no local xlsx). Changes exist in memory for this session only.")
+        return False
     try:
-        # Read xlsx using openpyxl
         import openpyxl
-        wb  = openpyxl.load_workbook(xlsx_path, read_only=True, data_only=True)
-        ws  = wb.active
-        all_rows = list(ws.iter_rows(values_only=True))
-        wb.close()
-
-        if not all_rows:
-            raise ValueError("Spreadsheet appears to be empty.")
-
-        # First row = headers
-        headers = [str(h).strip() if h is not None else "" for h in all_rows[0]]
-
-        def ci(name):
-            try:    return headers.index(name)
-            except: return -1
-
-        col_idx = {
-            "FileNumber":      ci("FileNumber"),
-            "Family":          ci("Family"),
-            "Variety":         ci("Variety"),
-            "SeedSource":      ci("Seed Source"),
-            "Comments":        ci("Comments"),
-            "NumSeeds":        ci("# of Seeds"),
-            "Season":          ci("Season"),
-            "SeedSaverLevel":  ci("Seed Saver Level"),
-            "HybridDoNotSave": ci("Hybrid-Do Not Save"),
-            "Edible":          ci("Edible"),
-            "WhereGrown":      ci("Where Grown"),
-            "PerennialAnnual": ci("Perennial/Annual"),
-            "GrownBy":         ci("Grown By"),
-            "Year":            ci("Year"),
-            "SoilTemperature": ci("Soil Temperature"),
-            "Germination":     ci("Germination"),
-        }
-
-        def get(row_vals, key):
-            idx = col_idx.get(key, -1)
-            if idx < 0 or idx >= len(row_vals):
-                return ""
-            v = row_vals[idx]
-            return str(v).strip() if v is not None else ""
-
-        inserted = 0
-        for row_vals in all_rows[1:]:
-            fn_raw = get(row_vals, "FileNumber")
-            if not fn_raw or fn_raw == "None":
-                continue
-            try:
-                fn = int(float(fn_raw))
-            except:
-                continue
-            yr_raw = get(row_vals, "Year")
-            try:
-                yr = str(int(float(yr_raw))) if yr_raw and yr_raw != "None" else ""
-            except:
-                yr = yr_raw
-            conn.execute(
-                "INSERT OR REPLACE INTO seeds VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                (fn,
-                 get(row_vals, "Family"),    get(row_vals, "Variety"),
-                 get(row_vals, "SeedSource"), get(row_vals, "Comments"),
-                 get(row_vals, "NumSeeds"),   get(row_vals, "Season"),
-                 get(row_vals, "SeedSaverLevel"), get(row_vals, "HybridDoNotSave"),
-                 get(row_vals, "Edible"),     get(row_vals, "WhereGrown"),
-                 get(row_vals, "PerennialAnnual"), get(row_vals, "GrownBy"),
-                 yr,
-                 get(row_vals, "SoilTemperature"), get(row_vals, "Germination"),
-                 get(row_vals, "BackgroundInfo")),
-            )
-            inserted += 1
-        conn.commit()
-        st.session_state["db_status"] = "ok"
-        st.session_state["db_msg"]    = f"✅ Loaded {inserted} seeds from xlsx."
-    except ImportError:
-        st.session_state["db_status"] = "error"
-        st.session_state["db_msg"] = (
-            "❌ openpyxl not installed. Run:  pip install openpyxl"
-        )
+        wb = openpyxl.load_workbook(xlsx_path)
+        ws_xl = wb.active
+        headers = [cell.value for cell in ws_xl[1]]
+        header_idx = {str(h).strip(): i+1
+                      for i, h in enumerate(headers) if h}
+        for row_xl in ws_xl.iter_rows(min_row=2):
+            for cell in row_xl:
+                cell.value = None
+        for r_idx, row in enumerate(rows, start=2):
+            rd = dict(row)
+            for col_key, xlsx_hdr in COL_HEADER_MAP.items():
+                col_num = header_idx.get(xlsx_hdr)
+                if col_num:
+                    ws_xl.cell(row=r_idx, column=col_num,
+                               value=rd.get(col_key, ""))
+        max_data_row = len(rows) + 1
+        if ws_xl.max_row > max_data_row:
+            ws_xl.delete_rows(max_data_row + 1,
+                              ws_xl.max_row - max_data_row)
+        wb.save(xlsx_path)
+        return True
     except Exception as e:
-        st.session_state["db_status"] = "error"
-        st.session_state["db_msg"]    = f"❌ Error loading xlsx: {e}"
-
+        st.error(f"Local xlsx save error: {e}")
+        return False
 
 def db_search(term: str = "") -> list[dict]:
     conn = get_db()
@@ -291,6 +426,7 @@ def db_add(data: dict):
         tuple(data.get(c, "") for c in COLS),
     )
     conn.commit()
+    save_to_xlsx()
 
 
 def db_update(fn: int, data: dict):
@@ -311,6 +447,7 @@ def db_update(fn: int, data: dict):
         data.get("BackgroundInfo", ""), fn,
     ))
     conn.commit()
+    save_to_xlsx()
 
 
 def db_delete(file_numbers: list[int]):
@@ -318,6 +455,7 @@ def db_delete(file_numbers: list[int]):
     for fn in file_numbers:
         conn.execute("DELETE FROM seeds WHERE FileNumber=?", (fn,))
     conn.commit()
+    save_to_xlsx()
 
 
 def db_next_fn() -> int:
@@ -357,9 +495,10 @@ def generate_labels_pdf(label_data: list,
     for row, qty in label_data:
         for _ in range(qty):
             labels.append((row, False))
-        # Add one background info label per seed (not per qty)
+        # Add same qty of background labels as seed labels (only if bg info exists)
         if include_background and (row.get("BackgroundInfo") or "").strip():
-            labels.append((row, True))
+            for _ in range(qty):
+                labels.append((row, True))
     if not labels:
         return None
 
