@@ -142,148 +142,6 @@ COLS = [
     "Year", "SoilTemperature", "Germination", "BackgroundInfo",
 ]
 
-CREATE_SQL = """
-    CREATE TABLE IF NOT EXISTS seeds (
-        FileNumber INTEGER PRIMARY KEY,
-        Family TEXT, Variety TEXT, SeedSource TEXT, Comments TEXT,
-        NumSeeds TEXT, Season TEXT, SeedSaverLevel TEXT,
-        HybridDoNotSave TEXT, Edible TEXT, WhereGrown TEXT,
-        PerennialAnnual TEXT, GrownBy TEXT, Year TEXT,
-        SoilTemperature TEXT, Germination TEXT, BackgroundInfo TEXT
-    )
-"""
-
-
-def get_db() -> sqlite3.Connection:
-    """Return the shared in-session SQLite connection."""
-    if "db" not in st.session_state:
-        conn = sqlite3.connect(":memory:", check_same_thread=False)
-        conn.row_factory = sqlite3.Row
-        conn.execute(CREATE_SQL)
-        conn.commit()
-        st.session_state.db = conn
-        _load_xlsx(conn)
-    return st.session_state.db
-
-
-def _load_xlsx(conn: sqlite3.Connection):
-    """Load seed data — tries Google Sheets first, then local xlsx."""
-    loaded = False
-
-    # ── Primary: Google Sheets (if configured in st.secrets) ────────
-    ws = _get_gsheet()
-    if ws is not None:
-        try:
-            all_rows = ws.get_all_values()
-            if all_rows:
-                headers = [str(h).strip() for h in all_rows[0]]
-                def ci_gs(name):
-                    try:    return headers.index(name)
-                    except: return -1
-                idx = {k: ci_gs(v) for k, v in COL_HEADER_MAP.items()}
-                def get_gs(rv, key):
-                    i = idx.get(key, -1)
-                    return str(rv[i]).strip() if 0 <= i < len(rv) else ""
-                inserted = 0
-                for rv in all_rows[1:]:
-                    fn_raw = get_gs(rv, "FileNumber")
-                    if not fn_raw or fn_raw == "None": continue
-                    try:    fn = int(float(fn_raw))
-                    except: continue
-                    yr = get_gs(rv, "Year")
-                    try:    yr = str(int(float(yr))) if yr and yr != "None" else ""
-                    except: pass
-                    conn.execute(
-                        "INSERT OR REPLACE INTO seeds VALUES"
-                        " (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                        (fn, get_gs(rv,"Family"), get_gs(rv,"Variety"),
-                         get_gs(rv,"SeedSource"), get_gs(rv,"Comments"),
-                         get_gs(rv,"NumSeeds"), get_gs(rv,"Season"),
-                         get_gs(rv,"SeedSaverLevel"), get_gs(rv,"HybridDoNotSave"),
-                         get_gs(rv,"Edible"), get_gs(rv,"WhereGrown"),
-                         get_gs(rv,"PerennialAnnual"), get_gs(rv,"GrownBy"), yr,
-                         get_gs(rv,"SoilTemperature"), get_gs(rv,"Germination"),
-                         get_gs(rv,"BackgroundInfo")),
-                    )
-                    inserted += 1
-                conn.commit()
-                loaded = True
-                st.session_state["db_status"] = "ok"
-                st.session_state["db_msg"] = f"✅ Loaded {inserted} seeds from Google Sheets."
-        except Exception as e:
-            st.session_state["db_status"] = "warning"
-            st.session_state["db_msg"] = f"⚠️ Google Sheets error: {e}. Trying local xlsx…"
-
-    # ── Fallback: local xlsx ─────────────────────────────────────────
-    if not loaded:
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        xlsx_path  = None
-        for d in [script_dir, os.path.dirname(script_dir), os.getcwd()]:
-            cand = os.path.join(d, "_SEED_LIBRARY_PARSED.xlsx")
-            if os.path.exists(cand):
-                xlsx_path = cand
-                print(f"Found xlsx at: {xlsx_path}")
-                break
-        if not xlsx_path:
-            st.session_state["db_status"] = "warning"
-            st.session_state["db_msg"] = (
-                "⚠️ _SEED_LIBRARY_PARSED.xlsx not found and Google Sheets not configured. "
-                "Place the xlsx alongside streamlit_app.py, or add GSheet secrets.")
-            return
-        try:
-            import openpyxl
-            wb       = openpyxl.load_workbook(xlsx_path, read_only=True, data_only=True)
-            ws_xl    = wb.active
-            all_rows = list(ws_xl.iter_rows(values_only=True))
-            wb.close()
-            if not all_rows:
-                raise ValueError("Spreadsheet is empty.")
-            headers2 = [str(h).strip() if h is not None else "" for h in all_rows[0]]
-            def ci2(name):
-                try:    return headers2.index(name)
-                except: return -1
-            idx2 = {k: ci2(v) for k, v in COL_HEADER_MAP.items()}
-            def get2(rv, key):
-                i = idx2.get(key, -1)
-                if i < 0 or i >= len(rv): return ""
-                v = rv[i]
-                return str(v).strip() if v is not None else ""
-            inserted = 0
-            for rv in all_rows[1:]:
-                fn_raw = get2(rv, "FileNumber")
-                if not fn_raw or fn_raw == "None": continue
-                try:    fn = int(float(fn_raw))
-                except: continue
-                yr = get2(rv, "Year")
-                try:    yr = str(int(float(yr))) if yr and yr != "None" else ""
-                except: pass
-                conn.execute(
-                    "INSERT OR REPLACE INTO seeds VALUES"
-                    " (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                    (fn, get2(rv,"Family"), get2(rv,"Variety"),
-                     get2(rv,"SeedSource"), get2(rv,"Comments"),
-                     get2(rv,"NumSeeds"), get2(rv,"Season"),
-                     get2(rv,"SeedSaverLevel"), get2(rv,"HybridDoNotSave"),
-                     get2(rv,"Edible"), get2(rv,"WhereGrown"),
-                     get2(rv,"PerennialAnnual"), get2(rv,"GrownBy"), yr,
-                     get2(rv,"SoilTemperature"), get2(rv,"Germination"),
-                     get2(rv,"BackgroundInfo")),
-                )
-                inserted += 1
-            conn.commit()
-            st.session_state["db_status"] = "ok"
-            st.session_state["db_msg"]    = f"✅ Loaded {inserted} seeds from xlsx."
-        except ImportError:
-            st.session_state["db_status"] = "error"
-            st.session_state["db_msg"]    = "❌ openpyxl not installed. Run: pip install openpyxl"
-        except Exception as e:
-            import traceback; traceback.print_exc()
-            st.session_state["db_status"] = "error"
-            st.session_state["db_msg"]    = f"❌ xlsx load error: {e}"
-
-
-
-# ── Column header mapping (internal key → spreadsheet column name) ────────
 COL_HEADER_MAP = {
     "FileNumber":      "FileNumber",
     "Family":          "Family",
@@ -305,173 +163,303 @@ COL_HEADER_MAP = {
 }
 SHEET_HEADERS = list(COL_HEADER_MAP.values())
 
+CREATE_SQL = """
+    CREATE TABLE IF NOT EXISTS seeds (
+        "FileNumber"      INTEGER PRIMARY KEY,
+        "Family"          TEXT,
+        "Variety"         TEXT,
+        "SeedSource"      TEXT,
+        "Comments"        TEXT,
+        "NumSeeds"        TEXT,
+        "Season"          TEXT,
+        "SeedSaverLevel"  TEXT,
+        "HybridDoNotSave" TEXT,
+        "Edible"          TEXT,
+        "WhereGrown"      TEXT,
+        "PerennialAnnual" TEXT,
+        "GrownBy"         TEXT,
+        "Year"            TEXT,
+        "SoilTemperature" TEXT,
+        "Germination"     TEXT,
+        "BackgroundInfo"  TEXT
+    )
+"""
 
-def _get_gsheet():
-    """
-    Return a gspread Worksheet using credentials from st.secrets.
-    Secrets must contain:
-        [gcp_service_account]   — the full JSON key as a TOML table
-        GSHEET_ID               — the Google Sheet ID (from the URL)
-        GSHEET_TAB              — worksheet tab name (default "Sheet1")
-    Returns None if not configured.
-    """
+# ─────────────────────────────────────────────────────────────
+# POSTGRESQL DATABASE LAYER
+# ─────────────────────────────────────────────────────────────
+
+def get_pg_conn():
+    """Return a psycopg2 connection using st.secrets["DATABASE_URL"]."""
+    import psycopg2
+    import psycopg2.extras
+    url = st.secrets["DATABASE_URL"]
+    conn = psycopg2.connect(url, cursor_factory=psycopg2.extras.RealDictCursor)
+    conn.autocommit = False
+    return conn
+
+
+def _ensure_table():
+    """Create the seeds table if it doesn't exist."""
+    conn = get_pg_conn()
+    cur  = conn.cursor()
+    cur.execute(CREATE_SQL)
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+def _seed_table_populated() -> bool:
+    """Return True if the seeds table has at least one row."""
     try:
-        import gspread
-        from google.oauth2.service_account import Credentials
-        creds_dict = dict(st.secrets["gcp_service_account"])
-        creds = Credentials.from_service_account_info(
-            creds_dict,
-            scopes=[
-                "https://spreadsheets.google.com/feeds",
-                "https://www.googleapis.com/auth/drive",
-            ],
-        )
-        gc      = gspread.authorize(creds)
-        sh      = gc.open_by_key(st.secrets["GSHEET_ID"])
-        tab     = st.secrets.get("GSHEET_TAB", "Sheet1")
-        return sh.worksheet(tab)
+        conn = get_pg_conn()
+        cur  = conn.cursor()
+        cur.execute('SELECT 1 FROM seeds LIMIT 1')
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+        return row is not None
     except Exception:
-        return None
+        return False
 
 
-def _find_xlsx_path() -> str | None:
-    """Find the local xlsx file path."""
+def _load_from_xlsx_to_pg():
+    """
+    One-time seed load: read the local xlsx and INSERT into PostgreSQL.
+    Only runs if the table is empty.
+    """
     script_dir = os.path.dirname(os.path.abspath(__file__))
+    xlsx_path  = None
     for d in [script_dir, os.path.dirname(script_dir), os.getcwd()]:
         cand = os.path.join(d, "_SEED_LIBRARY_PARSED.xlsx")
         if os.path.exists(cand):
-            return cand
-    return None
+            xlsx_path = cand
+            break
+
+    if not xlsx_path:
+        st.session_state["db_status"] = "warning"
+        st.session_state["db_msg"] = (
+            "⚠️ PostgreSQL table is empty and no xlsx found to seed it. "
+            "Upload _SEED_LIBRARY_PARSED.xlsx alongside the app for initial load.")
+        return
+
+    try:
+        import openpyxl
+        wb       = openpyxl.load_workbook(xlsx_path, read_only=True, data_only=True)
+        ws       = wb.active
+        all_rows = list(ws.iter_rows(values_only=True))
+        wb.close()
+
+        if not all_rows:
+            raise ValueError("Spreadsheet is empty.")
+
+        headers = [str(h).strip() if h is not None else "" for h in all_rows[0]]
+
+        def ci(name):
+            try:    return headers.index(name)
+            except: return -1
+
+        idx = {k: ci(v) for k, v in COL_HEADER_MAP.items()}
+
+        def gv(rv, key):
+            i = idx.get(key, -1)
+            if i < 0 or i >= len(rv): return ""
+            v = rv[i]
+            return str(v).strip() if v is not None else ""
+
+        conn = get_pg_conn()
+        cur  = conn.cursor()
+        inserted = 0
+        for rv in all_rows[1:]:
+            fn_raw = gv(rv, "FileNumber")
+            if not fn_raw or fn_raw == "None": continue
+            try:    fn = int(float(fn_raw))
+            except: continue
+            yr = gv(rv, "Year")
+            try:    yr = str(int(float(yr))) if yr and yr != "None" else ""
+            except: pass
+            cur.execute("""
+                INSERT INTO seeds
+                ("FileNumber","Family","Variety","SeedSource","Comments",
+                 "NumSeeds","Season","SeedSaverLevel","HybridDoNotSave",
+                 "Edible","WhereGrown","PerennialAnnual","GrownBy","Year",
+                 "SoilTemperature","Germination","BackgroundInfo")
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                ON CONFLICT ("FileNumber") DO NOTHING
+            """, (fn,
+                  gv(rv,"Family"),      gv(rv,"Variety"),
+                  gv(rv,"SeedSource"),  gv(rv,"Comments"),
+                  gv(rv,"NumSeeds"),    gv(rv,"Season"),
+                  gv(rv,"SeedSaverLevel"), gv(rv,"HybridDoNotSave"),
+                  gv(rv,"Edible"),      gv(rv,"WhereGrown"),
+                  gv(rv,"PerennialAnnual"), gv(rv,"GrownBy"), yr,
+                  gv(rv,"SoilTemperature"), gv(rv,"Germination"),
+                  gv(rv,"BackgroundInfo")))
+            inserted += 1
+        conn.commit()
+        cur.close()
+        conn.close()
+        st.session_state["db_status"] = "ok"
+        st.session_state["db_msg"] = f"✅ Loaded {inserted} seeds into PostgreSQL."
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        st.session_state["db_status"] = "error"
+        st.session_state["db_msg"] = f"❌ Initial load error: {e}"
+
+
+def init_db():
+    """Called once per session — ensures table exists and has data."""
+    if st.session_state.get("db_ready"):
+        return
+    try:
+        _ensure_table()
+        if not _seed_table_populated():
+            _load_from_xlsx_to_pg()
+        else:
+            count = db_count()
+            st.session_state["db_status"] = "ok"
+            st.session_state["db_msg"] = f"✅ Connected — {count:,} seeds in PostgreSQL."
+        st.session_state["db_ready"] = True
+    except Exception as e:
+        st.session_state["db_status"] = "error"
+        st.session_state["db_msg"] = f"❌ Database connection error: {e}"
+
+
+# ── CRUD ─────────────────────────────────────────────────────
+def db_search(term: str = "") -> list[dict]:
+    conn = get_pg_conn()
+    cur  = conn.cursor()
+    if term:
+        t = f"%{term.lower()}%"
+        cur.execute("""
+            SELECT * FROM seeds
+            WHERE LOWER(CAST("FileNumber" AS TEXT)) LIKE %s
+               OR LOWER("Family")  LIKE %s
+               OR LOWER("Variety") LIKE %s
+            ORDER BY "FileNumber"
+        """, (t, t, t))
+    else:
+        cur.execute('SELECT * FROM seeds ORDER BY "FileNumber"')
+    rows = [dict(r) for r in cur.fetchall()]
+    cur.close()
+    conn.close()
+    return rows
+
+
+def db_add(data: dict):
+    conn = get_pg_conn()
+    cur  = conn.cursor()
+    cur.execute("""
+        INSERT INTO seeds
+        ("FileNumber","Family","Variety","SeedSource","Comments",
+         "NumSeeds","Season","SeedSaverLevel","HybridDoNotSave",
+         "Edible","WhereGrown","PerennialAnnual","GrownBy","Year",
+         "SoilTemperature","Germination","BackgroundInfo")
+        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+    """, tuple(data.get(c, "") for c in COLS))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+def db_update(fn: int, data: dict):
+    conn = get_pg_conn()
+    cur  = conn.cursor()
+    cur.execute("""
+        UPDATE seeds SET
+            "Family"=%s, "Variety"=%s, "SeedSource"=%s, "Comments"=%s,
+            "NumSeeds"=%s, "Season"=%s, "SeedSaverLevel"=%s,
+            "HybridDoNotSave"=%s, "Edible"=%s, "WhereGrown"=%s,
+            "PerennialAnnual"=%s, "GrownBy"=%s, "Year"=%s,
+            "SoilTemperature"=%s, "Germination"=%s, "BackgroundInfo"=%s
+        WHERE "FileNumber"=%s
+    """, (
+        data.get("Family",""),        data.get("Variety",""),
+        data.get("SeedSource",""),    data.get("Comments",""),
+        data.get("NumSeeds",""),      data.get("Season",""),
+        data.get("SeedSaverLevel",""),data.get("HybridDoNotSave",""),
+        data.get("Edible",""),        data.get("WhereGrown",""),
+        data.get("PerennialAnnual",""),data.get("GrownBy",""),
+        data.get("Year",""),          data.get("SoilTemperature",""),
+        data.get("Germination",""),   data.get("BackgroundInfo",""),
+        fn,
+    ))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+def db_delete(file_numbers: list[int]):
+    conn = get_pg_conn()
+    cur  = conn.cursor()
+    for fn in file_numbers:
+        cur.execute('DELETE FROM seeds WHERE "FileNumber"=%s', (fn,))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+def db_next_fn() -> int:
+    conn = get_pg_conn()
+    cur  = conn.cursor()
+    cur.execute('SELECT MAX("FileNumber") FROM seeds')
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+    val = row["max"] if row else None
+    return (val + 1) if val else 1001
+
+
+def db_count() -> int:
+    conn = get_pg_conn()
+    cur  = conn.cursor()
+    cur.execute("SELECT COUNT(*) FROM seeds")
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+    return row["count"] if row else 0
+
+
+def db_over_limit() -> list[dict]:
+    """Return seeds where Comments or BackgroundInfo exceeds 300 chars."""
+    conn = get_pg_conn()
+    cur  = conn.cursor()
+    cur.execute("""
+        SELECT "FileNumber", "Family", "Variety",
+               LENGTH("Comments")       AS clen,
+               LENGTH("BackgroundInfo") AS blen
+        FROM seeds
+        WHERE LENGTH("Comments") > 300
+           OR LENGTH("BackgroundInfo") > 300
+        ORDER BY "Family", "Variety"
+    """)
+    rows = [dict(r) for r in cur.fetchall()]
+    cur.close()
+    conn.close()
+    return rows
 
 
 def save_to_xlsx():
     """
-    Persist all in-memory rows.
-    Priority:
-      1. Google Sheets (if configured in st.secrets)
-      2. Local xlsx file (for local development)
+    Build an in-memory xlsx from PostgreSQL data and store in session
+    for download. No file writing needed — PG is the source of truth.
     """
-    conn  = get_db()
-    rows  = conn.execute("SELECT * FROM seeds ORDER BY FileNumber").fetchall()
-
-    # ── Try Google Sheets first ──────────────────────────────────────
-    ws = _get_gsheet()
-    if ws is not None:
-        try:
-            # Build list of lists: header row + data rows
-            data = [SHEET_HEADERS]
-            for row in rows:
-                rd = dict(row)
-                data.append([rd.get(k, "") for k in COL_HEADER_MAP.keys()])
-            # Clear the sheet and rewrite from A1
-            ws.clear()
-            ws.update("A1", data, value_input_option="RAW")
-            return True
-        except Exception as e:
-            st.warning(f"Google Sheets save error: {e}. Trying local xlsx…")
-
-    # ── Fallback: local xlsx ─────────────────────────────────────────
-    xlsx_path = _find_xlsx_path()
-    if not xlsx_path:
-        st.warning("No save destination found (no Google Sheets config and "
-                   "no local xlsx). Changes exist in memory for this session only.")
-        return False
     try:
         import openpyxl
-        wb = openpyxl.load_workbook(xlsx_path)
-        ws_xl = wb.active
-        headers = [cell.value for cell in ws_xl[1]]
-        header_idx = {str(h).strip(): i+1
-                      for i, h in enumerate(headers) if h}
-        for row_xl in ws_xl.iter_rows(min_row=2):
-            for cell in row_xl:
-                cell.value = None
-        for r_idx, row in enumerate(rows, start=2):
-            rd = dict(row)
-            for col_key, xlsx_hdr in COL_HEADER_MAP.items():
-                col_num = header_idx.get(xlsx_hdr)
-                if col_num:
-                    ws_xl.cell(row=r_idx, column=col_num,
-                               value=rd.get(col_key, ""))
-        max_data_row = len(rows) + 1
-        if ws_xl.max_row > max_data_row:
-            ws_xl.delete_rows(max_data_row + 1,
-                              ws_xl.max_row - max_data_row)
-        wb.save(xlsx_path)
-        return True
+        rows = db_search("")
+        wb   = openpyxl.Workbook()
+        ws   = wb.active
+        ws.title = "Seeds"
+        ws.append(SHEET_HEADERS)
+        for row in rows:
+            ws.append([row.get(k, "") for k in COL_HEADER_MAP.keys()])
+        buf = io.BytesIO()
+        wb.save(buf)
+        st.session_state["xlsx_download_bytes"] = buf.getvalue()
     except Exception as e:
-        st.error(f"Local xlsx save error: {e}")
-        return False
-
-def db_search(term: str = "") -> list[dict]:
-    conn = get_db()
-    t = f"%{term.lower()}%"
-    if term:
-        cur = conn.execute("""
-            SELECT * FROM seeds
-            WHERE LOWER(CAST(FileNumber AS TEXT)) LIKE ?
-               OR LOWER(Family)  LIKE ?
-               OR LOWER(Variety) LIKE ?
-            ORDER BY FileNumber
-        """, (t, t, t))
-    else:
-        cur = conn.execute("SELECT * FROM seeds ORDER BY FileNumber")
-    return [dict(r) for r in cur.fetchall()]
+        print(f"xlsx build error: {e}")
 
 
-def db_add(data: dict):
-    conn = get_db()
-    conn.execute(
-        "INSERT INTO seeds VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-        tuple(data.get(c, "") for c in COLS),
-    )
-    conn.commit()
-    save_to_xlsx()
-
-
-def db_update(fn: int, data: dict):
-    conn = get_db()
-    conn.execute("""
-        UPDATE seeds SET
-            Family=?, Variety=?, SeedSource=?, Comments=?,
-            NumSeeds=?, Season=?, SeedSaverLevel=?, HybridDoNotSave=?,
-            Edible=?, WhereGrown=?, PerennialAnnual=?, GrownBy=?,
-            Year=?, SoilTemperature=?, Germination=?, BackgroundInfo=?
-        WHERE FileNumber=?
-    """, (
-        data["Family"], data["Variety"], data["SeedSource"], data["Comments"],
-        data["NumSeeds"], data["Season"], data["SeedSaverLevel"],
-        data["HybridDoNotSave"], data["Edible"], data["WhereGrown"],
-        data["PerennialAnnual"], data["GrownBy"], data["Year"],
-        data["SoilTemperature"], data["Germination"],
-        data.get("BackgroundInfo", ""), fn,
-    ))
-    conn.commit()
-    save_to_xlsx()
-
-
-def db_delete(file_numbers: list[int]):
-    conn = get_db()
-    for fn in file_numbers:
-        conn.execute("DELETE FROM seeds WHERE FileNumber=?", (fn,))
-    conn.commit()
-    save_to_xlsx()
-
-
-def db_next_fn() -> int:
-    conn = get_db()
-    row = conn.execute("SELECT MAX(FileNumber) FROM seeds").fetchone()
-    return (row[0] + 1) if row[0] else 1001
-
-
-def db_count() -> int:
-    conn = get_db()
-    return conn.execute("SELECT COUNT(*) FROM seeds").fetchone()[0]
-
-
-# ─────────────────────────────────────────────────────────────
-# PDF GENERATION
-# ─────────────────────────────────────────────────────────────
 def generate_labels_pdf(label_data: list,
                         include_background: bool = False) -> bytes | None:
     """Returns PDF bytes or None on error.
@@ -665,6 +653,20 @@ def generate_labels_pdf(label_data: list,
 # ─────────────────────────────────────────────────────────────
 # SHARED UI HELPERS
 # ─────────────────────────────────────────────────────────────
+def show_download_bar():
+    """Show download button if updated xlsx bytes are available."""
+    xlsx_bytes = st.session_state.get("xlsx_download_bytes")
+    if xlsx_bytes:
+        st.download_button(
+            label="⬇️  Download Updated _SEED_LIBRARY_PARSED.xlsx",
+            data=xlsx_bytes,
+            file_name="_SEED_LIBRARY_PARSED.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            help="Download and replace your local xlsx file to keep changes permanent.",
+            use_container_width=True,
+        )
+
+
 def page_header(title: str, subtitle: str = ""):
     st.markdown(f"""
     <div class="ccmga-title">
@@ -709,7 +711,7 @@ def page_home():
         "Cochise County Master Gardener Association",
         "Seed Library Database",
     )
-    get_db()   # ensure DB is loaded
+    init_db()  # ensure DB is loaded
     status = st.session_state.get("db_status", "")
     msg    = st.session_state.get("db_msg", "")
     if status == "ok":
@@ -721,6 +723,7 @@ def page_home():
 
     count = db_count()
     st.markdown(f"### 🌱 {count:,} seeds in the library")
+    show_download_bar()
     st.markdown("---")
 
     st.markdown("""
@@ -736,16 +739,7 @@ def page_home():
     """)
 
     # ── Seeds with comments or background info over 300 chars ───────
-    conn = get_db()
-    over_limit = conn.execute("""
-        SELECT FileNumber, Family, Variety,
-               LENGTH(Comments)      AS clen,
-               LENGTH(BackgroundInfo) AS blen
-        FROM seeds
-        WHERE LENGTH(Comments) > 300
-           OR LENGTH(BackgroundInfo) > 300
-        ORDER BY Family, Variety
-    """).fetchall()
+    over_limit = db_over_limit()
 
     if over_limit:
         st.markdown("---")
@@ -999,9 +993,12 @@ def _browse_duplicate_form(source_row: dict):
 
         if st.form_submit_button("💾  Save as New Record", use_container_width=True):
             fn = int(fn)
-            conn = get_db()
-            existing = conn.execute(
-                "SELECT 1 FROM seeds WHERE FileNumber=?", (fn,)).fetchone()
+            _conn = get_pg_conn()
+            _cur  = _conn.cursor()
+            _cur.execute('SELECT 1 FROM seeds WHERE "FileNumber"=%s', (fn,))
+            existing = _cur.fetchone()
+            _cur.close()
+            _conn.close()
             if existing:
                 st.error(f"File #{fn} already exists. Choose a different number.")
             else:
@@ -1017,6 +1014,7 @@ def _browse_duplicate_form(source_row: dict):
                 })
                 st.success(f"✅ New seed #{fn} saved as a duplicate of "
                            f"#{source_row['FileNumber']}.")
+                show_download_bar()
                 st.rerun()
 
 
@@ -1064,9 +1062,12 @@ def page_add():
             st.error("Family is required.")
         else:
             # Check duplicate
-            conn = get_db()
-            existing = conn.execute(
-                "SELECT 1 FROM seeds WHERE FileNumber=?", (fn,)).fetchone()
+            _conn = get_pg_conn()
+            _cur  = _conn.cursor()
+            _cur.execute('SELECT 1 FROM seeds WHERE "FileNumber"=%s', (fn,))
+            existing = _cur.fetchone()
+            _cur.close()
+            _conn.close()
             if existing:
                 st.error(f"File #{fn} already exists. Choose a different number.")
             else:
@@ -1081,6 +1082,7 @@ def page_add():
                     "Germination": germ, "BackgroundInfo": bg_info,
                 })
                 st.success(f"✅ Seed #{fn} — {family} added successfully!")
+                show_download_bar()
 
 
 # ─────────────────────────────────────────────────────────────
@@ -1149,6 +1151,7 @@ def page_remove():
                          type="primary", use_container_width=True):
                 db_delete(selected_fns)
                 st.success(f"✅ {n} record(s) deleted.")
+                show_download_bar()
                 st.session_state.remove_term = active_term
                 st.rerun()
     else:
