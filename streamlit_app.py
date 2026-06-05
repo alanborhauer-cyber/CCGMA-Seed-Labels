@@ -22,7 +22,109 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
+import streamlit as st
+import smtplib
+from email.mime.text import MIMEText
+import random
+from datetime import datetime, timedelta
+import bcrypt
+from supabase import create_client, Client
 
+# =========================================================================
+# ZONE 1: INITIALIZATION & AUTH UTILITIES
+# =========================================================================
+supabase: Client = create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
+
+def hash_password(password: str) -> str:
+    password_bytes = password.encode('utf-8')
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(password_bytes, salt).decode('utf-8')
+
+def check_password(plain_password: str, hashed_password_from_db: str) -> bool:
+    try:
+        return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password_from_db.encode('utf-8'))
+    except Exception:
+        return False
+
+def send_verification_email(to_email, code):
+    # ... (Keep the exact same send_verification_email function from earlier) ...
+    pass
+
+# Track login state across page updates
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+if "auth_step" not in st.session_state:
+    st.session_state.auth_step = "login"
+if "user_email" not in st.session_state:
+    st.session_state.user_email = None
+
+
+# =========================================================================
+# ZONE 2: GATEKEEPER (The Login / Register Screens)
+# =========================================================================
+if not st.session_state.logged_in:
+    
+    if st.session_state.auth_step == "login":
+        st.title("🌱 Seed Library Login")
+        email = st.text_input("Email")
+        password = st.text_input("Password", type="password")
+        
+        if st.button("Log In"):
+            response = supabase.table("app_users").select("*").eq("email", email).execute()
+            if response.data:
+                user = response.data[0]
+                if check_password(password, user["password_hash"]):
+                    if not user["is_verified"]:
+                        st.warning("Your email isn't verified yet.")
+                        st.session_state.user_email = email
+                        st.session_state.auth_step = "verify"
+                        st.rerun()
+                    elif not user["is_approved"]:
+                        st.error("🔒 Account verified, but an Admin must approve your access before login.")
+                    else:
+                        # SUCCESS! Change state and rerun to load your real app
+                        st.session_state.user_role = user["role"]
+                        st.session_state.logged_in = True
+                        st.rerun()
+                else:
+                    st.error("Invalid email or password.")
+            else:
+                st.error("Invalid email or password.")
+                
+        if st.button("Need an account? Register"):
+            st.session_state.auth_step = "register"
+            st.rerun()
+
+    elif st.session_state.auth_step == "register":
+        # ... (Keep the exact same registration UI block from earlier) ...
+        pass
+
+    elif st.session_state.auth_step == "verify":
+        # ... (Keep the exact same verification UI block from earlier) ...
+        pass
+
+
+# =========================================================================
+# ZONE 3: YOUR EXISTING APP CODE
+# =========================================================================
+else:
+    # 🌟 EVERYTHING BELOW THIS LINE ONLY RUNS IF THE USER IS LOGGED IN 🌟
+    
+    # Optional Sidebar Logout Button
+    if st.sidebar.button("Log Out"):
+        st.session_state.logged_in = False
+        st.session_state.auth_step = "login"
+        st.rerun()
+        
+    # --- Put your existing app logic/UI right here ---
+    st.title("Welcome to the Seed Library!")
+    st.write("This is your original app code running safely behind a password wall.")
+    
+    # Example Admin Panel injection
+    if st.session_state.user_role == "admin":
+        if st.sidebar.checkbox("Show Admin Dashboard"):
+            st.write("### Pending Approvals")
+            # ... (Keep the admin approval loop here) ...
 # ─────────────────────────────────────────────────────────────
 # PASSWORD PROTECTION
 # ─────────────────────────────────────────────────────────────
