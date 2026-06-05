@@ -219,6 +219,7 @@ st.markdown("""
     [data-testid="stSidebar"] .stRadio label {
         color: white !important;
         font-weight: bold;
+        font-size: 1.05rem;
     }
     /* Page title */
     .ccmga-title {
@@ -252,7 +253,6 @@ st.markdown("""
     .stAlert { border-radius: 6px; }
 </style>
 """, unsafe_allow_html=True)
-
 
 # ─────────────────────────────────────────────────────────────
 # DATABASE — loaded once per session into st.session_state
