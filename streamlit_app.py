@@ -2,7 +2,7 @@
 """
 Cochise County Master Gardener Association — Seed Library
 Streamlit Web Application
-Run with:  streamlit run streamlit_app.py
+Run with:   streamlit run streamlit_app.py
 """
 
 import os
@@ -11,6 +11,11 @@ import sys
 import sqlite3
 import json
 import tempfile
+import random                          # <-- NEW REQUIRED IMPORT
+from datetime import datetime, timedelta # <-- NEW REQUIRED IMPORT
+import bcrypt                          # <-- NEW REQUIRED IMPORT
+from email.mime.text import MIMEText   # <-- NEW REQUIRED IMPORT
+import smtplib                         # <-- NEW REQUIRED IMPORT
 import streamlit as st
 
 # ─────────────────────────────────────────────────────────────
@@ -22,166 +27,182 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
-import streamlit as st
-import smtplib
-from email.mime.text import MIMEText
-import random
-from datetime import datetime, timedelta
-import bcrypt
-from supabase import create_client, Client
 
-# =========================================================================
-# ZONE 1: INITIALIZATION & AUTH UTILITIES
-# =========================================================================
-supabase: Client = create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
-
+# ─────────────────────────────────────────────────────────────
+# NEW: SECURITY & EMAIL UTILITIES
+# ─────────────────────────────────────────────────────────────
 def hash_password(password: str) -> str:
+    """Transforms a plain text password into a secure, salted bcrypt hash string."""
     password_bytes = password.encode('utf-8')
     salt = bcrypt.gensalt()
     return bcrypt.hashpw(password_bytes, salt).decode('utf-8')
 
-def check_password(plain_password: str, hashed_password_from_db: str) -> bool:
+def check_password_hash(plain_password: str, hashed_password_from_db: str) -> bool:
+    """Compares a plain text password guess against the stored bcrypt hash."""
     try:
         return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password_from_db.encode('utf-8'))
     except Exception:
         return False
 
 def send_verification_email(to_email, code):
-    # ... (Keep the exact same send_verification_email function from earlier) ...
-    pass
+    """Sends a 6-digit code via Google SMTP safely"""
+    msg = MIMEText(f"Your 6-digit verification code for the Seed Library is: {code}\n\nThis code expires in 15 minutes.")
+    msg['Subject'] = 'Verify Your Seed Library Account'
+    msg['From'] = st.secrets["EMAIL_FROM"]
+    msg['To'] = to_email
 
-# Track login state across page updates
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
-if "auth_step" not in st.session_state:
-    st.session_state.auth_step = "login"
-if "user_email" not in st.session_state:
-    st.session_state.user_email = None
+    try:
+        with smtplib.SMTP(st.secrets["SMTP_SERVER"], st.secrets["SMTP_PORT"]) as server:
+            server.starttls()
+            server.login(st.secrets["EMAIL_FROM"], st.secrets["EMAIL_PASSWORD"])
+            server.send_message(msg)
+        return True
+    except Exception as e:
+        st.error(f"Failed to send email: {e}")
+        return False
 
+# ─────────────────────────────────────────────────────────────
+# REPLACED: NEW AUTHENTICATION GATEKEEPER
+# ─────────────────────────────────────────────────────────────
+def check_password():
+    """
+    Handles secure User Login, Account Registration, and Email Verification.
+    Returns True ONLY if a user is verified, approved, and correctly logged in.
+    """
+    # Initialize multi-step session states if they don't exist yet
+    if "logged_in" not in st.session_state:
+        st.session_state.logged_in = False
+    if "auth_step" not in st.session_state:
+        st.session_state.auth_step = "login"
+    if "user_email" not in st.session_state:
+        st.session_state.user_email = None
 
-# =========================================================================
-# ZONE 2: GATEKEEPER (The Login / Register Screens)
-# =========================================================================
-if not st.session_state.logged_in:
-    
-    if st.session_state.auth_step == "login":
-        st.title("🌱 Seed Library Login")
-        email = st.text_input("Email")
-        password = st.text_input("Password", type="password")
-        
-        if st.button("Log In"):
-            response = supabase.table("app_users").select("*").eq("email", email).execute()
-            if response.data:
-                user = response.data[0]
-                if check_password(password, user["password_hash"]):
+    # If already verified & authenticated, bypass entirely
+    if st.session_state.logged_in:
+        return True
+
+    # Center-aligned auth block wrapper
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.markdown("""
+        <div style="background-color:#1b5e20; padding:32px; border-radius:12px; text-align:center; margin-top:60px;">
+            <h1 style="color:white;margin:0 0 4px 0;">🌹</h1>
+            <h2 style="color:white;margin:0 0 4px 0;">CCMGA Seed Library</h2>
+            <p style="color:#c8e6c9;margin:0 0 24px 0;">Cochise County Master Gardener Association</p>
+        </div>
+        """, unsafe_allow_html=True)
+        st.markdown("###")
+
+        # --- SUB-SCREEN A: LOGIN ---
+        if st.session_state.auth_step == "login":
+            email = st.text_input("Email", placeholder="Enter your registered email…")
+            password = st.text_input("Password", type="password", placeholder="Enter password…")
+            
+            if st.button("Log In", use_container_width=True):
+                # Retrieve your connection dynamically from your existing function
+                import psycopg2.extras
+                conn = psycopg2.connect(st.secrets["DATABASE_URL"], cursor_factory=psycopg2.extras.RealDictCursor)
+                cur = conn.cursor()
+                cur.execute("SELECT * FROM app_users WHERE email = %s", (email.strip(),))
+                user = cur.fetchone()
+                cur.close()
+                conn.close()
+                
+                if user and check_password_hash(password, user["password_hash"]):
                     if not user["is_verified"]:
                         st.warning("Your email isn't verified yet.")
                         st.session_state.user_email = email
                         st.session_state.auth_step = "verify"
                         st.rerun()
                     elif not user["is_approved"]:
-                        st.error("🔒 Account verified, but an Admin must approve your access before login.")
+                        st.error("🔒 Your account is verified, but an Admin must approve access before you can log in.")
                     else:
-                        # SUCCESS! Change state and rerun to load your real app
-                        st.session_state.user_role = user["role"]
+                        st.session_state.user_role = user.get("role", "user")
                         st.session_state.logged_in = True
                         st.rerun()
                 else:
                     st.error("Invalid email or password.")
-            else:
-                st.error("Invalid email or password.")
-                
-        if st.button("Need an account? Register"):
-            st.session_state.auth_step = "register"
-            st.rerun()
-
-    elif st.session_state.auth_step == "register":
-        # ... (Keep the exact same registration UI block from earlier) ...
-        pass
-
-    elif st.session_state.auth_step == "verify":
-        # ... (Keep the exact same verification UI block from earlier) ...
-        pass
-
-
-# =========================================================================
-# ZONE 3: YOUR EXISTING APP CODE
-# =========================================================================
-else:
-    # 🌟 EVERYTHING BELOW THIS LINE ONLY RUNS IF THE USER IS LOGGED IN 🌟
-    
-    # Optional Sidebar Logout Button
-    if st.sidebar.button("Log Out"):
-        st.session_state.logged_in = False
-        st.session_state.auth_step = "login"
-        st.rerun()
-        
-    # --- Put your existing app logic/UI right here ---
-    st.title("Welcome to the Seed Library!")
-    st.write("This is your original app code running safely behind a password wall.")
-    
-    # Example Admin Panel injection
-    if st.session_state.user_role == "admin":
-        if st.sidebar.checkbox("Show Admin Dashboard"):
-            st.write("### Pending Approvals")
-            # ... (Keep the admin approval loop here) ...
-# ─────────────────────────────────────────────────────────────
-# PASSWORD PROTECTION
-# ─────────────────────────────────────────────────────────────
-def check_password():
-    """
-    Returns True if the user is authenticated.
-    Password is stored in st.secrets["APP_PASSWORD"].
-    Falls back to a default for local development if secrets not configured.
-    """
-    if st.session_state.get("authenticated"):
-        return True
-
-    # Center the login form
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        st.markdown("""
-        <div style="
-            background-color:#1b5e20;
-            padding:32px;
-            border-radius:12px;
-            text-align:center;
-            margin-top:60px;
-        ">
-            <h1 style="color:white;margin:0 0 4px 0;">🌹</h1>
-            <h2 style="color:white;margin:0 0 4px 0;">CCMGA Seed Library</h2>
-            <p style="color:#c8e6c9;margin:0 0 24px 0;">
-                Cochise County Master Gardener Association
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-
-        st.markdown("###")
-        pw = st.text_input("Password", type="password",
-                           placeholder="Enter library password…")
-        login_clicked = st.button("Login", use_container_width=True)
-
-        if login_clicked:
-            # Get password from secrets or fall back to default for local dev
-            try:
-                correct = st.secrets["APP_PASSWORD"]
-            except (KeyError, FileNotFoundError):
-                correct = "ccmga2024"   # local dev default — change before deploying
-
-            if pw == correct:
-                st.session_state.authenticated = True
+                    
+            if st.button("Need an account? Register Here", use_container_width=True):
+                st.session_state.auth_step = "register"
                 st.rerun()
-            else:
-                st.error("Incorrect password. Please try again.")
 
-        st.markdown(
-            "<p style='text-align:center;color:#888;font-size:0.8rem;"
-            "margin-top:16px;'>"
-            "Contact your library coordinator for access.</p>",
-            unsafe_allow_html=True,
-        )
-    st.stop()
+        # --- SUB-SCREEN B: REGISTRATION ---
+        elif st.session_state.auth_step == "register":
+            name = st.text_input("Full Name")
+            email = st.text_input("Email Address")
+            password = st.text_input("Create Password", type="password", help="Minimum 8 characters")
+            
+            if st.button("Sign Up", use_container_width=True):
+                if len(password) < 8:
+                    st.error("Password must be at least 8 characters long.")
+                elif not email or not name:
+                    st.error("All fields are required.")
+                else:
+                    code = str(random.randint(100000, 999999))
+                    expires = (datetime.now() + timedelta(minutes=15)).isoformat()
+                    secure_password_hash = hash_password(password)
+                    
+                    try:
+                        import psycopg2
+                        conn = psycopg2.connect(st.secrets["DATABASE_URL"])
+                        cur = conn.cursor()
+                        cur.execute("""
+                            INSERT INTO app_users 
+                            (email, full_name, password_hash, verify_code, verify_expires, is_verified, is_approved)
+                            VALUES (%s, %s, %s, %s, %s, FALSE, FALSE)
+                        """, (email.strip(), name.strip(), secure_password_hash, code, expires))
+                        conn.commit()
+                        cur.close()
+                        conn.close()
+                        
+                        if send_verification_email(email.strip(), code):
+                            st.session_state.user_email = email.strip()
+                            st.session_state.auth_step = "verify"
+                            st.success("Verification code sent!")
+                            st.rerun()
+                    except Exception as e:
+                        st.error("Registration failed. Email may already be in use.")
+
+            if st.button("Already have an account? Log In", use_container_width=True):
+                st.session_state.auth_step = "login"
+                st.rerun()
+
+        # --- SUB-SCREEN C: CODE VERIFICATION ---
+        elif st.session_state.auth_step == "verify":
+            st.write(f"We sent a 6-digit confirmation code to: **{st.session_state.user_email}**")
+            input_code = st.text_input("6-Digit Verification Code")
+            
+            if st.button("Verify Account", use_container_width=True):
+                import psycopg2.extras
+                conn = psycopg2.connect(st.secrets["DATABASE_URL"], cursor_factory=psycopg2.extras.RealDictCursor)
+                cur = conn.cursor()
+                cur.execute("SELECT * FROM app_users WHERE email = %s", (st.session_state.user_email,))
+                user = cur.fetchone()
+                
+                if user and user["verify_code"] == input_code.strip() and datetime.fromisoformat(user["verify_expires"]) > datetime.now():
+                    cur.execute("UPDATE app_users SET is_verified = TRUE WHERE email = %s", (st.session_state.user_email,))
+                    conn.commit()
+                    st.success("✅ Email verified! Your registration is now pending Admin approval.")
+                    st.session_state.auth_step = "login"
+                    st.button("Return to Login")
+                else:
+                    st.error("Invalid or expired registration code.")
+                cur.close()
+                conn.close()
+
+    st.stop() # Stops execution here until the user logs in successfully
     return False
+
+# Execute the security check right out of the gate
+check_password()
+
+# ─────────────────────────────────────────────────────────────
+# GLOBAL STYLES (Your remaining code stays unchanged here...)
+# ─────────────────────────────────────────────────────────────
+st.markdown("""
+<style>
+...
 
 # ─────────────────────────────────────────────────────────────
 # GLOBAL STYLES
