@@ -346,9 +346,13 @@ def db_search(term: str = "") -> list[dict]:
         """, (t, t, t))
     else:
         cur.execute('SELECT * FROM seeds ORDER BY "FileNumber"')
-    # Coerce all None values to empty strings for safe downstream use
-    rows = [{k: (str(v).strip() if v is not None else "") for k, v in dict(r).items()}
-            for r in cur.fetchall()]
+    # Coerce None → "" but keep FileNumber as int
+    def clean_row(r):
+        d = dict(r)
+        return {k: (int(v) if k == "FileNumber" and v is not None
+                    else str(v).strip() if v is not None else "")
+                for k, v in d.items()}
+    rows = [clean_row(r) for r in cur.fetchall()]
     cur.close()
     conn.close()
     return rows
@@ -441,9 +445,16 @@ def db_over_limit() -> list[dict]:
            OR LENGTH("BackgroundInfo") > 300
         ORDER BY "Family", "Variety"
     """)
-    # Coerce all None values to empty strings for safe downstream use
-    rows = [{k: (str(v).strip() if v is not None else "") for k, v in dict(r).items()}
-            for r in cur.fetchall()]
+    rows = []
+    for r in cur.fetchall():
+        d = dict(r)
+        rows.append({
+            "FileNumber": d.get("FileNumber"),
+            "Family":     str(d.get("Family") or ""),
+            "Variety":    str(d.get("Variety") or ""),
+            "clen":       int(d.get("clen") or 0),
+            "blen":       int(d.get("blen") or 0),
+        })
     cur.close()
     conn.close()
     return rows
@@ -759,15 +770,17 @@ def page_home():
         rows_display = []
         for r in over_limit:
             issues = []
-            if r["clen"] and r["clen"] > 300:
-                issues.append(f"Comments: {r['clen']} chars ({r['clen']-300} over)")
-            if r["blen"] and r["blen"] > 300:
-                issues.append(f"Background Info: {r['blen']} chars ({r['blen']-300} over)")
+            clen = int(r.get("clen") or 0)
+            blen = int(r.get("blen") or 0)
+            if clen > 300:
+                issues.append(f"Comments: {clen} chars ({clen-300} over)")
+            if blen > 300:
+                issues.append(f"Background Info: {blen} chars ({blen-300} over)")
             rows_display.append({
-                "File #":   r["FileNumber"],
-                "Family": sf(r,"Family"),
-                "Variety": sf(r,"Variety"),
-                "Issue":    "  |  ".join(issues),
+                "File #":  r.get("FileNumber", ""),
+                "Family":  sf(r, "Family"),
+                "Variety": sf(r, "Variety"),
+                "Issue":   "  |  ".join(issues),
             })
         import pandas as pd
         st.dataframe(
@@ -896,7 +909,7 @@ def _browse_detail(row: dict):
             st.markdown(f"**{FIELD_LABELS[f]}:** {row.get(f,'') or '—'}")
 
     # Background Info — always shown in full with its own section
-    bg = (row.get("BackgroundInfo") or "").strip()
+    bg = str(row.get("BackgroundInfo") or "").strip()
     if bg:
         st.markdown("---")
         st.markdown("**Background Information**")
@@ -1245,7 +1258,7 @@ def page_labels():
 
     # Summary
     label_data = []
-    row_lookup = {r["FileNumber"]: r for r in rows}
+    row_lookup = {int(r["FileNumber"]): r for r in rows}
     total_labels = 0
     for fn, qty in st.session_state.label_qtys.items():
         if qty > 0 and fn in row_lookup:
