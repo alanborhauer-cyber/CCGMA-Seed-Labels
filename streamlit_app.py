@@ -326,6 +326,12 @@ def init_db():
 
 
 # ── CRUD ─────────────────────────────────────────────────────
+def sf(row: dict, key: str) -> str:
+    """Safely get a string field from a PostgreSQL row — never returns None."""
+    v = row.get(key) if isinstance(row, dict) else None
+    return str(v).strip() if v is not None else ""
+
+
 def db_search(term: str = "") -> list[dict]:
     conn = get_pg_conn()
     cur  = conn.cursor()
@@ -340,7 +346,9 @@ def db_search(term: str = "") -> list[dict]:
         """, (t, t, t))
     else:
         cur.execute('SELECT * FROM seeds ORDER BY "FileNumber"')
-    rows = [dict(r) for r in cur.fetchall()]
+    # Coerce all None values to empty strings for safe downstream use
+    rows = [{k: (str(v).strip() if v is not None else "") for k, v in dict(r).items()}
+            for r in cur.fetchall()]
     cur.close()
     conn.close()
     return rows
@@ -433,7 +441,9 @@ def db_over_limit() -> list[dict]:
            OR LENGTH("BackgroundInfo") > 300
         ORDER BY "Family", "Variety"
     """)
-    rows = [dict(r) for r in cur.fetchall()]
+    # Coerce all None values to empty strings for safe downstream use
+    rows = [{k: (str(v).strip() if v is not None else "") for k, v in dict(r).items()}
+            for r in cur.fetchall()]
     cur.close()
     conn.close()
     return rows
@@ -755,8 +765,8 @@ def page_home():
                 issues.append(f"Background Info: {r['blen']} chars ({r['blen']-300} over)")
             rows_display.append({
                 "File #":   r["FileNumber"],
-                "Family":   r["Family"],
-                "Variety":  r["Variety"],
+                "Family": sf(r,"Family"),
+                "Variety": sf(r,"Variety"),
                 "Issue":    "  |  ".join(issues),
             })
         import pandas as pd
@@ -796,10 +806,10 @@ def page_browse():
     unique    = []
     count_map = {}
     for r in rows:
-        key = (r["Family"].strip().lower(), r["Variety"].strip().lower())
+        key = (sf(r,"Family").lower(), sf(r,"Variety").lower())
         count_map[key] = count_map.get(key, 0) + 1
     for r in rows:
-        key = (r["Family"].strip().lower(), r["Variety"].strip().lower())
+        key = (sf(r,"Family").lower(), sf(r,"Variety").lower())
         if key not in seen:
             seen[key] = True
             unique.append(r)
@@ -818,7 +828,7 @@ def page_browse():
 
     table_data = []
     for r in unique:
-        key = (r["Family"].strip().lower(), r["Variety"].strip().lower())
+        key = (sf(r,"Family").lower(), sf(r,"Variety").lower())
         row_d = {c: r.get(c, "") for c in display_cols if c != "Count"}
         row_d["Count"] = count_map[key]
         table_data.append(row_d)
@@ -1113,10 +1123,10 @@ def page_remove():
     df = pd.DataFrame([{
         "Select": False,
         "File #": r["FileNumber"],
-        "Family": r["Family"],
-        "Variety": r["Variety"],
-        "Season": r["Season"],
-        "Year": r["Year"],
+        "Family": sf(r,"Family"),
+        "Variety": sf(r,"Variety"),
+        "Season": sf(r,"Season"),
+        "Year": sf(r,"Year"),
     } for r in rows])
 
     st.caption(f"{len(rows)} records found. Check boxes to select for deletion.")
@@ -1193,9 +1203,9 @@ def page_labels():
     df = pd.DataFrame([{
         "Print": st.session_state.label_qtys.get(r["FileNumber"], 0) > 0,
         "File #": r["FileNumber"],
-        "Family": r["Family"],
-        "Variety": r["Variety"],
-        "Season": r["Season"],
+        "Family": sf(r,"Family"),
+        "Variety": sf(r,"Variety"),
+        "Season": sf(r,"Season"),
         "# Seeds": r["NumSeeds"],
         "Qty": st.session_state.label_qtys.get(r["FileNumber"], 0),
     } for r in rows])
