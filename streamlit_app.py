@@ -11,6 +11,10 @@ import sys
 import sqlite3
 import json
 import tempfile
+import random
+import smtplib
+from email.mime.text import MIMEText
+from datetime import datetime, timedelta
 import streamlit as st
 
 # -------------------------------------------------------------
@@ -18,7 +22,7 @@ import streamlit as st
 # -------------------------------------------------------------
 st.set_page_config(
     page_title="CCMGA Seed Library",
-    page_icon="[rose]",
+    page_icon="🌹",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -28,58 +32,150 @@ st.set_page_config(
 # -------------------------------------------------------------
 def check_password():
     """
-    Returns True if the user is authenticated.
-    Password is stored in st.secrets["APP_PASSWORD"].
-    Falls back to a default for local development if secrets not configured.
+    Full auth gate:
+      - Existing users: email + password login
+      - New users: register -> email verify -> wait for admin approval
+      - Admins: access admin panel in sidebar
+    Returns True if authenticated and approved.
     """
+    # Already authenticated this session
     if st.session_state.get("authenticated"):
         return True
 
-    # Center the login form
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
+    # Auth step router
+    step = st.session_state.get("auth_step", "login")
+
+    # ── Centered card ────────────────────────────────────────────────
+    _, col, _ = st.columns([1, 2, 1])
+    with col:
         st.markdown("""
-        <div style="
-            background-color:#1b5e20;
-            padding:32px;
-            border-radius:12px;
-            text-align:center;
-            margin-top:60px;
-        ">
-            <h1 style="color:white;margin:0 0 4px 0;">[rose]</h1>
-            <h2 style="color:white;margin:0 0 4px 0;">CCMGA Seed Library</h2>
-            <p style="color:#c8e6c9;margin:0 0 24px 0;">
-                Cochise County Master Gardener Association
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
+        <div style="background:#1b5e20;padding:24px 32px;border-radius:12px;
+                    text-align:center;margin-bottom:16px;">
+          <h2 style="color:white;margin:0;">🌹 CCMGA Seed Library</h2>
+          <p style="color:#c8e6c9;margin:4px 0 0 0;">
+            Cochise County Master Gardener Association</p>
+        </div>""", unsafe_allow_html=True)
 
-        st.markdown("###")
-        pw = st.text_input("Password", type="password",
-                           placeholder="Enter library password...")
-        login_clicked = st.button("Login", use_container_width=True)
+        if step == "login":
+            _auth_login(col)
+        elif step == "register":
+            _auth_register(col)
+        elif step == "verify":
+            _auth_verify(col)
 
-        if login_clicked:
-            # Get password from secrets or fall back to default for local dev
-            try:
-                correct = st.secrets["APP_PASSWORD"]
-            except (KeyError, FileNotFoundError):
-                correct = "ccmga2024"   # local dev default -- change before deploying
-
-            if pw == correct:
-                st.session_state.authenticated = True
-                st.rerun()
-            else:
-                st.error("Incorrect password. Please try again.")
-
-        st.markdown(
-            "<p style='text-align:center;color:#888;font-size:0.8rem;"
-            "margin-top:16px;'>"
-            "Contact your library coordinator for access.</p>",
-            unsafe_allow_html=True,
-        )
     st.stop()
     return False
+
+
+def _auth_login(col):
+    st.markdown("#### Sign In")
+    email    = st.text_input("Email", key="login_email")
+    password = st.text_input("Password", type="password", key="login_pw")
+
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button("Log In", use_container_width=True, type="primary"):
+            if not email or not password:
+                st.error("Please enter email and password.")
+            else:
+                user = user_login(email, password)
+                if user is None:
+                    st.error("Invalid email or password.")
+                elif not user["is_verified"]:
+                    st.warning("Email not verified. Check your inbox.")
+                    st.session_state.auth_email = email
+                    st.session_state.auth_step  = "verify"
+                    st.rerun()
+                elif not user["is_approved"]:
+                    st.warning(
+                        "🔒 Account verified but awaiting admin approval. "
+                        "You will be notified when access is granted.")
+                else:
+                    update_last_login(email)
+                    st.session_state.authenticated = True
+                    st.session_state.user_email    = email
+                    st.session_state.user_name     = user["full_name"]
+                    st.session_state.user_role     = user["role"]
+                    st.rerun()
+    with c2:
+        if st.button("Register", use_container_width=True):
+            st.session_state.auth_step = "register"
+            st.rerun()
+
+
+def _auth_register(col):
+    st.markdown("#### Create Account")
+    name     = st.text_input("Full Name",            key="reg_name")
+    email    = st.text_input("Email",                key="reg_email")
+    password = st.text_input("Password",             key="reg_pw",   type="password")
+    confirm  = st.text_input("Confirm Password",     key="reg_pw2",  type="password")
+
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button("Sign Up", use_container_width=True, type="primary"):
+            if not all([name, email, password, confirm]):
+                st.error("All fields are required.")
+            elif password != confirm:
+                st.error("Passwords do not match.")
+            elif len(password) < 8:
+                st.error("Password must be at least 8 characters.")
+            else:
+                with st.spinner("Creating account..."):
+                    result = user_register(email, name, password)
+                if result == "ok":
+                    st.session_state.auth_email = email
+                    st.session_state.auth_step  = "verify"
+                    st.success("Account created! Check your email for the verification code.")
+                    st.rerun()
+                elif result == "duplicate":
+                    st.error("That email is already registered. Try logging in.")
+                elif result == "email_failed":
+                    st.warning("Account created but email failed. Contact admin.")
+                else:
+                    st.error(f"Registration error: {result}")
+    with c2:
+        if st.button("Back to Login", use_container_width=True):
+            st.session_state.auth_step = "login"
+            st.rerun()
+
+
+def _auth_verify(col):
+    email = st.session_state.get("auth_email", "")
+    st.markdown("#### Verify Your Email")
+    st.info(f"A 6-digit code was sent to **{email}**")
+    code = st.text_input("Enter 6-digit code", key="verify_code",
+                          max_chars=6)
+
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        if st.button("Verify", use_container_width=True, type="primary"):
+            if not code or len(code) != 6:
+                st.error("Enter the 6-digit code.")
+            else:
+                result = user_verify(email, code)
+                if result == "ok":
+                    st.success(
+                        "✅ Email verified! Your account is pending "
+                        "admin approval. You will receive an email when approved.")
+                    st.session_state.auth_step = "login"
+                elif result == "expired":
+                    st.error("Code expired. Request a new one.")
+                else:
+                    st.error("Invalid code. Please try again.")
+    with c2:
+        if st.button("Resend Code", use_container_width=True):
+            with st.spinner("Sending..."):
+                ok = user_resend_code(email)
+            if ok:
+                st.success("New code sent!")
+            else:
+                st.error("Failed to send. Contact admin.")
+    with c3:
+        if st.button("Back to Login", use_container_width=True):
+            st.session_state.auth_step = "login"
+            st.rerun()
+
+
 
 # -------------------------------------------------------------
 # GLOBAL STYLES
@@ -199,11 +295,29 @@ def get_pg_conn():
     return conn
 
 
+CREATE_USERS_SQL = """
+    CREATE TABLE IF NOT EXISTS app_users (
+        id             SERIAL PRIMARY KEY,
+        email          TEXT UNIQUE NOT NULL,
+        full_name      TEXT,
+        password_hash  TEXT NOT NULL,
+        is_verified    BOOLEAN DEFAULT FALSE,
+        is_approved    BOOLEAN DEFAULT FALSE,
+        verify_code    TEXT,
+        verify_expires TIMESTAMP,
+        created_at     TIMESTAMP DEFAULT NOW(),
+        last_login     TIMESTAMP,
+        role           TEXT DEFAULT 'user'
+    )
+"""
+
+
 def _ensure_table():
-    """Create the seeds table if it doesn't exist."""
+    """Create the seeds and app_users tables if they don't exist."""
     conn = get_pg_conn()
     cur  = conn.cursor()
     cur.execute(CREATE_SQL)
+    cur.execute(CREATE_USERS_SQL)
     conn.commit()
     cur.close()
     conn.close()
@@ -239,7 +353,7 @@ def _load_from_xlsx_to_pg():
     if not xlsx_path:
         st.session_state["db_status"] = "warning"
         st.session_state["db_msg"] = (
-            "[!] PostgreSQL table is empty and no xlsx found to seed it. "
+            "⚠️ PostgreSQL table is empty and no xlsx found to seed it. "
             "Upload _SEED_LIBRARY_PARSED.xlsx alongside the app for initial load.")
         return
 
@@ -300,7 +414,7 @@ def _load_from_xlsx_to_pg():
         cur.close()
         conn.close()
         st.session_state["db_status"] = "ok"
-        st.session_state["db_msg"] = f"[ok] Loaded {inserted} seeds into PostgreSQL."
+        st.session_state["db_msg"] = f"✅ Loaded {inserted} seeds into PostgreSQL."
     except Exception as e:
         import traceback; traceback.print_exc()
         st.session_state["db_status"] = "error"
@@ -318,7 +432,7 @@ def init_db():
         else:
             count = db_count()
             st.session_state["db_status"] = "ok"
-            st.session_state["db_msg"] = f"[ok] Connected -- {count:,} seeds in PostgreSQL."
+            st.session_state["db_msg"] = f"✅ Connected -- {count:,} seeds in PostgreSQL."
         st.session_state["db_ready"] = True
     except Exception as e:
         st.session_state["db_status"] = "error"
@@ -479,6 +593,209 @@ def save_to_xlsx():
         st.session_state["xlsx_download_bytes"] = buf.getvalue()
     except Exception as e:
         print(f"xlsx build error: {e}")
+
+
+# =============================================================
+# USER AUTHENTICATION FUNCTIONS
+# =============================================================
+
+def _hash_password(plain: str) -> str:
+    import bcrypt
+    return bcrypt.hashpw(plain.encode(), bcrypt.gensalt()).decode()
+
+
+def _check_password_hash(plain: str, hashed: str) -> bool:
+    import bcrypt
+    try:
+        return bcrypt.checkpw(plain.encode(), hashed.encode())
+    except Exception:
+        return False
+
+
+def _send_verification_email(to_email: str, code: str) -> bool:
+    """Send 6-digit code via SMTP (Gmail App Password)."""
+    try:
+        msg = MIMEText(
+            f"Your 6-digit verification code for the CCMGA Seed Library is:\n\n"
+            f"    {code}\n\n"
+            f"This code expires in 15 minutes.\n\n"
+            f"If you did not request this, please ignore this email."
+        )
+        msg["Subject"] = "Verify Your CCMGA Seed Library Account"
+        msg["From"]    = st.secrets["EMAIL_FROM"]
+        msg["To"]      = to_email
+        with smtplib.SMTP(st.secrets["SMTP_SERVER"],
+                          int(st.secrets["SMTP_PORT"])) as server:
+            server.starttls()
+            server.login(st.secrets["EMAIL_FROM"],
+                         st.secrets["EMAIL_PASSWORD"])
+            server.send_message(msg)
+        return True
+    except Exception as e:
+        st.error(f"Email send failed: {e}")
+        return False
+
+
+def user_login(email: str, password: str) -> dict | None:
+    """Return user dict if credentials valid, else None."""
+    conn = get_pg_conn()
+    cur  = conn.cursor()
+    cur.execute(
+        "SELECT * FROM app_users WHERE email = %s", (email.lower().strip(),))
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+    if not row:
+        return None
+    user = dict(row)
+    if not _check_password_hash(password, user["password_hash"]):
+        return None
+    return user
+
+
+def user_register(email: str, full_name: str, password: str) -> str:
+    """
+    Insert new unverified user. Returns 'ok', 'duplicate', or 'error'.
+    """
+    code    = str(random.randint(100000, 999999))
+    expires = (datetime.now() + timedelta(minutes=15)).isoformat()
+    try:
+        conn = get_pg_conn()
+        cur  = conn.cursor()
+        cur.execute("""
+            INSERT INTO app_users
+                (email, full_name, password_hash,
+                 is_verified, is_approved, verify_code, verify_expires, role)
+            VALUES (%s, %s, %s, FALSE, FALSE, %s, %s, 'user')
+        """, (email.lower().strip(), full_name,
+              _hash_password(password), code, expires))
+        conn.commit()
+        cur.close()
+        conn.close()
+        # Send email
+        if _send_verification_email(email, code):
+            return "ok"
+        return "email_failed"
+    except Exception as e:
+        if "unique" in str(e).lower() or "duplicate" in str(e).lower():
+            return "duplicate"
+        return f"error: {e}"
+
+
+def user_verify(email: str, code: str) -> str:
+    """
+    Verify the 6-digit code. Returns 'ok', 'expired', or 'invalid'.
+    """
+    conn = get_pg_conn()
+    cur  = conn.cursor()
+    cur.execute("SELECT * FROM app_users WHERE email = %s",
+                (email.lower().strip(),))
+    row = cur.fetchone()
+    if not row:
+        cur.close(); conn.close()
+        return "invalid"
+    user = dict(row)
+    if user["verify_code"] != code:
+        cur.close(); conn.close()
+        return "invalid"
+    if datetime.fromisoformat(str(user["verify_expires"])) < datetime.now():
+        cur.close(); conn.close()
+        return "expired"
+    cur.execute(
+        "UPDATE app_users SET is_verified = TRUE WHERE email = %s",
+        (email.lower().strip(),))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return "ok"
+
+
+def user_resend_code(email: str) -> bool:
+    """Generate a new code and resend verification email."""
+    code    = str(random.randint(100000, 999999))
+    expires = (datetime.now() + timedelta(minutes=15)).isoformat()
+    conn = get_pg_conn()
+    cur  = conn.cursor()
+    cur.execute("""
+        UPDATE app_users
+        SET verify_code = %s, verify_expires = %s
+        WHERE email = %s
+    """, (code, expires, email.lower().strip()))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return _send_verification_email(email, code)
+
+
+def admin_get_pending() -> list[dict]:
+    """Return all verified-but-not-approved users."""
+    conn = get_pg_conn()
+    cur  = conn.cursor()
+    cur.execute("""
+        SELECT id, email, full_name, created_at
+        FROM app_users
+        WHERE is_verified = TRUE AND is_approved = FALSE
+        ORDER BY created_at
+    """)
+    rows = [dict(r) for r in cur.fetchall()]
+    cur.close()
+    conn.close()
+    return rows
+
+
+def admin_get_all_users() -> list[dict]:
+    """Return all users for admin management."""
+    conn = get_pg_conn()
+    cur  = conn.cursor()
+    cur.execute("""
+        SELECT id, email, full_name, is_verified, is_approved,
+               role, created_at, last_login
+        FROM app_users ORDER BY created_at DESC
+    """)
+    rows = [dict(r) for r in cur.fetchall()]
+    cur.close()
+    conn.close()
+    return rows
+
+
+def admin_approve(user_id: int):
+    conn = get_pg_conn()
+    cur  = conn.cursor()
+    cur.execute(
+        "UPDATE app_users SET is_approved = TRUE WHERE id = %s", (user_id,))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+def admin_revoke(user_id: int):
+    conn = get_pg_conn()
+    cur  = conn.cursor()
+    cur.execute(
+        "UPDATE app_users SET is_approved = FALSE WHERE id = %s", (user_id,))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+def admin_delete_user(user_id: int):
+    conn = get_pg_conn()
+    cur  = conn.cursor()
+    cur.execute("DELETE FROM app_users WHERE id = %s", (user_id,))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+def update_last_login(email: str):
+    conn = get_pg_conn()
+    cur  = conn.cursor()
+    cur.execute(
+        "UPDATE app_users SET last_login = NOW() WHERE email = %s",
+        (email.lower().strip(),))
+    conn.commit()
+    cur.close()
+    conn.close()
 
 
 def generate_labels_pdf(label_data: list,
@@ -691,7 +1008,7 @@ def show_download_bar():
 def page_header(title: str, subtitle: str = ""):
     st.markdown(f"""
     <div class="ccmga-title">
-        <h1>[rose] {title}</h1>
+        <h1>🌹 {title}</h1>
         {"<p>" + subtitle + "</p>" if subtitle else ""}
     </div>
     """, unsafe_allow_html=True)
@@ -743,7 +1060,7 @@ def page_home():
         st.error(msg)
 
     count = db_count()
-    st.markdown(f"### [seedling] {count:,} seeds in the library")
+    st.markdown(f"### 🌱 {count:,} seeds in the library")
     show_download_bar()
     st.markdown("---")
 
@@ -764,7 +1081,7 @@ def page_home():
 
     if over_limit:
         st.markdown("---")
-        st.warning(f"[!] **{len(over_limit)} seed(s) have text exceeding the "
+        st.warning(f"⚠️ **{len(over_limit)} seed(s) have text exceeding the "
                    "300-character label limit.** Only the first 300 characters "
                    "will print. Edit these records to shorten the text.")
         rows_display = []
@@ -899,7 +1216,7 @@ def _browse_detail(row: dict):
             # Flag comments over 300 chars
             if f == "Comments" and len(val) > 300:
                 st.markdown(f"**{FIELD_LABELS[f]}:** {val}")
-                st.warning(f"[!] Comments are {len(val)} characters "
+                st.warning(f"⚠️ Comments are {len(val)} characters "
                            f"({len(val)-300} over the 300-char label limit). "
                            "Only the first 300 characters will print on the label.")
             else:
@@ -915,7 +1232,7 @@ def _browse_detail(row: dict):
         st.markdown("**Background Information**")
         st.markdown(bg)
         if len(bg) > 300:
-            st.warning(f"[!] Background Info is {len(bg)} characters "
+            st.warning(f"⚠️ Background Info is {len(bg)} characters "
                        f"({len(bg)-300} over the 300-char label limit). "
                        "Only the first 300 characters will print on the label.")
 
@@ -1035,7 +1352,7 @@ def _browse_duplicate_form(source_row: dict):
                     "Year": year, "SoilTemperature": soil_t,
                     "Germination": germ, "BackgroundInfo": bg_info,
                 })
-                st.success(f"[ok] New seed #{fn} saved as a duplicate of "
+                st.success(f"✅ New seed #{fn} saved as a duplicate of "
                            f"#{source_row['FileNumber']}.")
                 show_download_bar()
                 st.rerun()
@@ -1104,7 +1421,7 @@ def page_add():
                     "Year": year, "SoilTemperature": soil_t,
                     "Germination": germ, "BackgroundInfo": bg_info,
                 })
-                st.success(f"[ok] Seed #{fn} -- {family} added successfully!")
+                st.success(f"✅ Seed #{fn} -- {family} added successfully!")
                 show_download_bar()
 
 
@@ -1173,7 +1490,7 @@ def page_remove():
             if st.button(f"?  Delete {n} Selected Record(s)",
                          type="primary", use_container_width=True):
                 db_delete(selected_fns)
-                st.success(f"[ok] {n} record(s) deleted.")
+                st.success(f"✅ {n} record(s) deleted.")
                 show_download_bar()
                 st.session_state.remove_term = active_term
                 st.rerun()
@@ -1308,19 +1625,123 @@ def page_labels():
 # -------------------------------------------------------------
 # SIDEBAR NAVIGATION
 # -------------------------------------------------------------
+def page_admin():
+    """Admin panel -- manage user approvals and accounts."""
+    if st.session_state.get("user_role") != "admin":
+        st.error("Access denied.")
+        return
+
+    page_header("Admin Panel", "Manage user accounts and approvals")
+
+    tab1, tab2 = st.tabs(["Pending Approvals", "All Users"])
+
+    with tab1:
+        pending = admin_get_pending()
+        if not pending:
+            st.success("No accounts waiting for approval.")
+        else:
+            st.warning(f"{len(pending)} account(s) awaiting approval.")
+            for u in pending:
+                c1, c2, c3 = st.columns([3, 1, 1])
+                c1.markdown(
+                    f"**{u['full_name']}**  \n{u['email']}  \n"
+                    f"*Registered: {str(u.get('created_at',''))[:10]}*")
+                if c2.button("Approve", key=f"apr_{u['id']}",
+                             use_container_width=True, type="primary"):
+                    admin_approve(u["id"])
+                    # Notify user by email
+                    try:
+                        msg = MIMEText(
+                            f"Hello {u['full_name']},\n\n"
+                            "Your CCMGA Seed Library account has been approved!\n"
+                            "You can now log in at the app URL.\n\n"
+                            "Cochise County Master Gardener Association")
+                        msg["Subject"] = "CCMGA Seed Library -- Account Approved"
+                        msg["From"]    = st.secrets["EMAIL_FROM"]
+                        msg["To"]      = u["email"]
+                        with smtplib.SMTP(st.secrets["SMTP_SERVER"],
+                                          int(st.secrets["SMTP_PORT"])) as srv:
+                            srv.starttls()
+                            srv.login(st.secrets["EMAIL_FROM"],
+                                      st.secrets["EMAIL_PASSWORD"])
+                            srv.send_message(msg)
+                    except Exception:
+                        pass
+                    st.rerun()
+                if c3.button("Deny", key=f"deny_{u['id']}",
+                             use_container_width=True):
+                    admin_delete_user(u["id"])
+                    st.rerun()
+                st.divider()
+
+    with tab2:
+        all_users = admin_get_all_users()
+        import pandas as pd
+        df = pd.DataFrame([{
+            "Name":       u.get("full_name",""),
+            "Email":      u.get("email",""),
+            "Role":       u.get("role","user"),
+            "Verified":   "Yes" if u.get("is_verified") else "No",
+            "Approved":   "Yes" if u.get("is_approved") else "No",
+            "Registered": str(u.get("created_at",""))[:10],
+            "Last Login":  str(u.get("last_login",""))[:10] if u.get("last_login") else "Never",
+        } for u in all_users])
+        st.dataframe(df, use_container_width=True, hide_index=True)
+
+        st.markdown("---")
+        st.markdown("#### Manage User")
+        emails = [u["email"] for u in all_users]
+        sel_email = st.selectbox("Select user", emails, key="admin_sel")
+        sel_user  = next((u for u in all_users if u["email"] == sel_email), None)
+        if sel_user:
+            c1, c2, c3 = st.columns(3)
+            if sel_user["is_approved"]:
+                if c1.button("Revoke Access", use_container_width=True):
+                    admin_revoke(sel_user["id"])
+                    st.rerun()
+            else:
+                if c1.button("Approve", use_container_width=True,
+                             type="primary"):
+                    admin_approve(sel_user["id"])
+                    st.rerun()
+            new_role = c2.selectbox(
+                "Role", ["user","admin"],
+                index=0 if sel_user["role"] == "user" else 1,
+                key="role_sel")
+            if c2.button("Set Role", use_container_width=True):
+                conn = get_pg_conn()
+                cur  = conn.cursor()
+                cur.execute(
+                    "UPDATE app_users SET role = %s WHERE id = %s",
+                    (new_role, sel_user["id"]))
+                conn.commit(); cur.close(); conn.close()
+                st.rerun()
+            if c3.button("Delete User", use_container_width=True):
+                if sel_user["role"] != "admin":
+                    admin_delete_user(sel_user["id"])
+                    st.rerun()
+                else:
+                    st.error("Cannot delete an admin account.")
+
+
 def sidebar_nav():
     PAGES = ["Home", "Browse Seeds", "Add Seeds", "Remove Seeds", "Print Labels"]
 
-    # If a home-page button set a nav_target, use it as the default index
     target = st.session_state.pop("nav_target", None)
     if target and target in PAGES:
-        default_idx = PAGES.index(target)
-        st.session_state["_nav_index"] = default_idx
+        st.session_state["_nav_index"] = PAGES.index(target)
     current_idx = st.session_state.get("_nav_index", 0)
 
     with st.sidebar:
-        st.markdown("## [rose] CCMGA\n### Seed Library")
+        st.markdown("## 🌹 CCMGA\n### Seed Library")
+        # Show logged-in user
+        uname = st.session_state.get("user_name", "")
+        urole = st.session_state.get("user_role", "user")
+        if uname:
+            st.markdown(f"**{uname}**  "
+                        f"{'(Admin)' if urole == 'admin' else ''}")
         st.markdown("---")
+
         page = st.radio(
             "Navigate",
             PAGES,
@@ -1328,17 +1749,26 @@ def sidebar_nav():
             key="nav_radio",
             label_visibility="collapsed",
         )
-        # Keep index in sync with radio selection
         st.session_state["_nav_index"] = PAGES.index(page)
         st.markdown("---")
+
+        # Admin panel link
+        if urole == "admin":
+            if st.button("🛡️ Admin Panel", use_container_width=True):
+                st.session_state["_nav_index"] = 0
+                st.session_state["show_admin"] = True
+                st.rerun()
+
         st.markdown(
             "<small>Cochise County Master Gardener Association<br/>"
             "v1.0 -- Claude AI + Alan Borhauer</small>",
             unsafe_allow_html=True,
         )
         st.markdown("---")
-        if st.button("[lock]  Log Out", use_container_width=True):
-            st.session_state.authenticated = False
+        if st.button("🔒 Log Out", use_container_width=True):
+            for k in ["authenticated","user_email","user_name",
+                      "user_role","auth_step","auth_email"]:
+                st.session_state.pop(k, None)
             st.rerun()
     return page
 
@@ -1351,6 +1781,11 @@ def main():
     check_password()
 
     selected = sidebar_nav()
+
+    # Admin panel takes priority if triggered
+    if st.session_state.pop("show_admin", False):
+        page_admin()
+        return
 
     if selected == "Home":
         page_home()
