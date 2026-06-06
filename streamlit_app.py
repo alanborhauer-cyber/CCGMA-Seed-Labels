@@ -698,9 +698,17 @@ def user_verify(email: str, code: str) -> str:
     if user["verify_code"] != code:
         cur.close(); conn.close()
         return "invalid"
-    if datetime.fromisoformat(str(user["verify_expires"])) < datetime.now():
-        cur.close(); conn.close()
-        return "expired"
+    # Use timezone-aware comparison to handle PostgreSQL timestamptz
+    from datetime import timezone
+    expires_raw = user["verify_expires"]
+    if expires_raw is not None:
+        if hasattr(expires_raw, "tzinfo") and expires_raw.tzinfo is not None:
+            now = datetime.now(timezone.utc)
+        else:
+            now = datetime.now()
+        if expires_raw < now:
+            cur.close(); conn.close()
+            return "expired"
     cur.execute(
         "UPDATE app_users SET is_verified = TRUE WHERE email = %s",
         (email.lower().strip(),))
@@ -1274,7 +1282,7 @@ def _browse_edit_form(row: dict, is_duplicate: bool = False):
                                value=row.get("BackgroundInfo",""), height=80,
                                help="Max 300 chars for label printing", max_chars=300)
 
-        if st.form_submit_button("?  Save Changes", use_container_width=True):
+        if st.form_submit_button("Save Changes", use_container_width=True):
             db_update(fn, {
                 "Family": family, "Variety": variety,
                 "SeedSource": source, "Comments": comments,
@@ -1331,7 +1339,7 @@ def _browse_duplicate_form(source_row: dict):
         bg_info = st.text_area("Background Info",
                                value=source_row.get("BackgroundInfo",""), height=80)
 
-        if st.form_submit_button("?  Save as New Record", use_container_width=True):
+        if st.form_submit_button("Save as New Record", use_container_width=True):
             fn = int(fn)
             _conn = get_pg_conn()
             _cur  = _conn.cursor()
@@ -1394,7 +1402,7 @@ def page_add():
                                help="Maximum 300 characters for label printing",
                                max_chars=300)
 
-        submitted = st.form_submit_button("?  Save Seed", use_container_width=True)
+        submitted = st.form_submit_button("Save Seed", use_container_width=True)
 
     if submitted:
         fn = int(fn)
@@ -1487,7 +1495,7 @@ def page_remove():
             f"I confirm I want to permanently delete {n} seed record(s)",
             key="remove_confirm")
         if confirm:
-            if st.button(f"?  Delete {n} Selected Record(s)",
+            if st.button(f"Delete {n} Selected Record(s)",
                          type="primary", use_container_width=True):
                 db_delete(selected_fns)
                 st.success(f"✅ {n} record(s) deleted.")
@@ -1547,32 +1555,6 @@ def page_labels():
         key="label_include_bg",
     )
 
-    edited = st.data_editor(
-        df,
-        use_container_width=True,
-        hide_index=True,
-        height=380,
-        column_config={
-            "Print": st.column_config.CheckboxColumn(
-                "Print", default=False),
-            "Qty": st.column_config.NumberColumn(
-                "Qty", min_value=0, max_value=99, step=1, default=0),
-            "File #": st.column_config.NumberColumn("File #", disabled=True),
-        },
-        disabled=["File #", "Family", "Variety", "Season", "# Seeds"],
-        key="label_editor",
-    )
-
-    # Persist qty changes
-    for i in range(len(edited)):
-        fn  = int(edited.iloc[i]["File #"])
-        qty = int(edited.iloc[i]["Qty"])
-        if edited.iloc[i]["Print"] and qty == 0:
-            qty = 1
-        if not edited.iloc[i]["Print"]:
-            qty = 0
-        st.session_state.label_qtys[fn] = qty
-
     # Summary
     label_data = []
     row_lookup = {int(r["FileNumber"]): r for r in rows}
@@ -1583,13 +1565,14 @@ def page_labels():
             total_labels += qty
 
     n_seeds = len(label_data)
+    st.divider()
     st.info(f"**{n_seeds}** seed(s) selected -- **{total_labels}** total labels")
 
-    col_a, col_b, col_c = st.columns(3)
+    col_a, col_b = st.columns(2)
     with col_a:
         if st.button("Set All to 1", use_container_width=True):
             for r in rows:
-                st.session_state.label_qtys[r["FileNumber"]] = 1
+                st.session_state.label_qtys[int(r["FileNumber"])] = 1
             st.rerun()
     with col_b:
         if st.button("Clear All", use_container_width=True):
