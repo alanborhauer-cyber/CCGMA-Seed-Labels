@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Cochise County Master Gardener Association — Seed Library
+Cochise County Master Gardener Association -- Seed Library
 Streamlit Web Application
 Run with:  streamlit run streamlit_app.py
 """
@@ -13,19 +13,19 @@ import json
 import tempfile
 import streamlit as st
 
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 # PAGE CONFIG (must be first Streamlit call)
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 st.set_page_config(
     page_title="CCMGA Seed Library",
-    page_icon="🌹",
+    page_icon="[rose]",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 # PASSWORD PROTECTION
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 def check_password():
     """
     Returns True if the user is authenticated.
@@ -46,7 +46,7 @@ def check_password():
             text-align:center;
             margin-top:60px;
         ">
-            <h1 style="color:white;margin:0 0 4px 0;">🌹</h1>
+            <h1 style="color:white;margin:0 0 4px 0;">[rose]</h1>
             <h2 style="color:white;margin:0 0 4px 0;">CCMGA Seed Library</h2>
             <p style="color:#c8e6c9;margin:0 0 24px 0;">
                 Cochise County Master Gardener Association
@@ -56,7 +56,7 @@ def check_password():
 
         st.markdown("###")
         pw = st.text_input("Password", type="password",
-                           placeholder="Enter library password…")
+                           placeholder="Enter library password...")
         login_clicked = st.button("Login", use_container_width=True)
 
         if login_clicked:
@@ -64,7 +64,7 @@ def check_password():
             try:
                 correct = st.secrets["APP_PASSWORD"]
             except (KeyError, FileNotFoundError):
-                correct = "ccmga2024"   # local dev default — change before deploying
+                correct = "ccmga2024"   # local dev default -- change before deploying
 
             if pw == correct:
                 st.session_state.authenticated = True
@@ -81,9 +81,9 @@ def check_password():
     st.stop()
     return False
 
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 # GLOBAL STYLES
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 st.markdown("""
 <style>
     /* Sidebar */
@@ -132,9 +132,9 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-# ─────────────────────────────────────────────────────────────
-# DATABASE — loaded once per session into st.session_state
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
+# DATABASE -- loaded once per session into st.session_state
+# -------------------------------------------------------------
 COLS = [
     "FileNumber", "Family", "Variety", "SeedSource", "Comments",
     "NumSeeds", "Season", "SeedSaverLevel", "HybridDoNotSave",
@@ -185,9 +185,9 @@ CREATE_SQL = """
     )
 """
 
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 # POSTGRESQL DATABASE LAYER
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 
 def get_pg_conn():
     """Return a psycopg2 connection using st.secrets["DATABASE_URL"]."""
@@ -239,7 +239,7 @@ def _load_from_xlsx_to_pg():
     if not xlsx_path:
         st.session_state["db_status"] = "warning"
         st.session_state["db_msg"] = (
-            "⚠️ PostgreSQL table is empty and no xlsx found to seed it. "
+            "[!] PostgreSQL table is empty and no xlsx found to seed it. "
             "Upload _SEED_LIBRARY_PARSED.xlsx alongside the app for initial load.")
         return
 
@@ -300,15 +300,15 @@ def _load_from_xlsx_to_pg():
         cur.close()
         conn.close()
         st.session_state["db_status"] = "ok"
-        st.session_state["db_msg"] = f"✅ Loaded {inserted} seeds into PostgreSQL."
+        st.session_state["db_msg"] = f"[ok] Loaded {inserted} seeds into PostgreSQL."
     except Exception as e:
         import traceback; traceback.print_exc()
         st.session_state["db_status"] = "error"
-        st.session_state["db_msg"] = f"❌ Initial load error: {e}"
+        st.session_state["db_msg"] = f"[x] Initial load error: {e}"
 
 
 def init_db():
-    """Called once per session — ensures table exists and has data."""
+    """Called once per session -- ensures table exists and has data."""
     if st.session_state.get("db_ready"):
         return
     try:
@@ -318,16 +318,16 @@ def init_db():
         else:
             count = db_count()
             st.session_state["db_status"] = "ok"
-            st.session_state["db_msg"] = f"✅ Connected — {count:,} seeds in PostgreSQL."
+            st.session_state["db_msg"] = f"[ok] Connected -- {count:,} seeds in PostgreSQL."
         st.session_state["db_ready"] = True
     except Exception as e:
         st.session_state["db_status"] = "error"
-        st.session_state["db_msg"] = f"❌ Database connection error: {e}"
+        st.session_state["db_msg"] = f"[x] Database connection error: {e}"
 
 
-# ── CRUD ─────────────────────────────────────────────────────
+# -- CRUD -----------------------------------------------------
 def sf(row: dict, key: str) -> str:
-    """Safely get a string field from a PostgreSQL row — never returns None."""
+    """Safely get a string field from a PostgreSQL row -- never returns None."""
     v = row.get(key) if isinstance(row, dict) else None
     return str(v).strip() if v is not None else ""
 
@@ -346,7 +346,7 @@ def db_search(term: str = "") -> list[dict]:
         """, (t, t, t))
     else:
         cur.execute('SELECT * FROM seeds ORDER BY "FileNumber"')
-    # Coerce None → "" but keep FileNumber as int
+    # Coerce None ? "" but keep FileNumber as int
     def clean_row(r):
         d = dict(r)
         return {k: (int(v) if k == "FileNumber" and v is not None
@@ -463,7 +463,7 @@ def db_over_limit() -> list[dict]:
 def save_to_xlsx():
     """
     Build an in-memory xlsx from PostgreSQL data and store in session
-    for download. No file writing needed — PG is the source of truth.
+    for download. No file writing needed -- PG is the source of truth.
     """
     try:
         import openpyxl
@@ -582,13 +582,13 @@ def generate_labels_pdf(label_data: list,
             body_w = LABEL_W - PAD_L - PAD_R
 
             if is_bg:
-                # ── Background Info label — clean, no dividers, full width ──
+                # -- Background Info label -- clean, no dividers, full width --
                 # Generous padding for readability
                 BG_PAD = 10
                 full_w = LABEL_W - BG_PAD * 2
                 full_h = LABEL_H - BG_PAD * 2
 
-                # Title: "Family — Background Info"
+                # Title: "Family -- Background Info"
                 bg_title_sty = ParagraphStyle("bgtitle",
                     fontSize=10, fontName="Helvetica-Bold",
                     textColor=colors.black, alignment=TA_LEFT,
@@ -600,7 +600,7 @@ def generate_labels_pdf(label_data: list,
 
                 all_bg = [
                     Paragraph(f"{family}", bg_title_sty),
-                    Paragraph(f"{variety} — Background Information", bg_title_sty),
+                    Paragraph(f"{variety} -- Background Information", bg_title_sty),
                     Paragraph(bg_info, bg_body_sty),
                 ]
                 Frame(lx + BG_PAD, ly + BG_PAD, full_w, full_h,
@@ -609,7 +609,7 @@ def generate_labels_pdf(label_data: list,
                       showBoundary=0).addFromList(all_bg, c)
 
             else:
-                # ── Standard seed label ────────────────────────────
+                # -- Standard seed label ----------------------------
                 TITLE_H_USE = TITLE_H
                 ty     = ly + LABEL_H - PAD_T - TITLE_H_USE
                 body_h = LABEL_H - PAD_T - TITLE_H_USE - 3 - PAD_B
@@ -636,7 +636,7 @@ def generate_labels_pdf(label_data: list,
                 left_items = [Paragraph(family, fam_sty)]
                 if variety: left_items.append(Paragraph(variety, var_sty))
                 if hybrid:  left_items.append(Paragraph(
-                    f"* HYBRID — DO NOT SAVE SEEDS *",
+                    f"* HYBRID -- DO NOT SAVE SEEDS *",
                     ParagraphStyle("hyb", fontSize=7,
                     fontName="Helvetica-Bold",
                     textColor=colors.HexColor("#b71c1c"),
@@ -671,15 +671,15 @@ def generate_labels_pdf(label_data: list,
     return buf.getvalue()
 
 
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 # SHARED UI HELPERS
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 def show_download_bar():
     """Show download button if updated xlsx bytes are available."""
     xlsx_bytes = st.session_state.get("xlsx_download_bytes")
     if xlsx_bytes:
         st.download_button(
-            label="⬇️  Download Updated _SEED_LIBRARY_PARSED.xlsx",
+            label="  Download Updated _SEED_LIBRARY_PARSED.xlsx",
             data=xlsx_bytes,
             file_name="_SEED_LIBRARY_PARSED.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -691,7 +691,7 @@ def show_download_bar():
 def page_header(title: str, subtitle: str = ""):
     st.markdown(f"""
     <div class="ccmga-title">
-        <h1>🌹 {title}</h1>
+        <h1>[rose] {title}</h1>
         {"<p>" + subtitle + "</p>" if subtitle else ""}
     </div>
     """, unsafe_allow_html=True)
@@ -724,9 +724,9 @@ SAVER_OPTS    = ["", "Beginner Seed Saver", "Easy Seed Saver",
 PERAN_OPTS    = ["", "Annual", "Perennial", "Perennial/Annual"]
 
 
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 # PAGE: HOME
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 def page_home():
     page_header(
         "Cochise County Master Gardener Association",
@@ -743,7 +743,7 @@ def page_home():
         st.error(msg)
 
     count = db_count()
-    st.markdown(f"### 🌱 {count:,} seeds in the library")
+    st.markdown(f"### [seedling] {count:,} seeds in the library")
     show_download_bar()
     st.markdown("---")
 
@@ -754,17 +754,17 @@ def page_home():
 |---|---|
 | **Version** | 1.0 |
 | **Built for** | Cochise County Master Gardener Association |
-| **Labels** | Avery 94207  (2″ × 4″, 10 per sheet) |
-| **Platform** | Python · Streamlit · ReportLab |
+| **Labels** | Avery 94207  (2? x 4?, 10 per sheet) |
+| **Platform** | Python ? Streamlit ? ReportLab |
 | **Credits** | Claude AI (Anthropic) + Alan Borhauer |
     """)
 
-    # ── Seeds with comments or background info over 300 chars ───────
+    # -- Seeds with comments or background info over 300 chars -------
     over_limit = db_over_limit()
 
     if over_limit:
         st.markdown("---")
-        st.warning(f"⚠️ **{len(over_limit)} seed(s) have text exceeding the "
+        st.warning(f"[!] **{len(over_limit)} seed(s) have text exceeding the "
                    "300-character label limit.** Only the first 300 characters "
                    "will print. Edit these records to shorten the text.")
         rows_display = []
@@ -790,16 +790,16 @@ def page_home():
         )
 
 
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 # PAGE: BROWSE
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 def page_browse():
     page_header("Browse Seeds", "Search, sort, view details, and edit records")
 
     # Search bar
     col_s, col_b1, col_b2 = st.columns([4, 1, 1])
     with col_s:
-        term = st.text_input("Search", placeholder="Family, variety, or file number…",
+        term = st.text_input("Search", placeholder="Family, variety, or file number...",
                              label_visibility="collapsed",
                              key="browse_search")
     with col_b1:
@@ -814,7 +814,7 @@ def page_browse():
     active_term = st.session_state.get("browse_term", "")
     rows = db_search(active_term)
 
-    # Deduplicate by Family+Variety — keep first occurrence, count duplicates
+    # Deduplicate by Family+Variety -- keep first occurrence, count duplicates
     seen      = {}
     unique    = []
     count_map = {}
@@ -860,9 +860,9 @@ def page_browse():
 
     st.markdown("---")
 
-    # ── Detail / Edit panel ─────────────────────────────────────
+    # -- Detail / Edit panel -------------------------------------
     st.markdown("#### View or Edit a Record")
-    fn_options = {f"#{r['FileNumber']}  {r['Family']} — {r['Variety']}": r["FileNumber"]
+    fn_options = {f"#{r['FileNumber']}  {r['Family']} -- {r['Variety']}": r["FileNumber"]
                   for r in unique}
     chosen_label = st.selectbox("Select seed", list(fn_options.keys()),
                                 key="browse_select")
@@ -895,27 +895,27 @@ def _browse_detail(row: dict):
                     "SoilTemperature", "Germination", "HybridDoNotSave"]
     with col1:
         for f in left_fields:
-            val = row.get(f, "") or "—"
+            val = row.get(f, "") or "--"
             # Flag comments over 300 chars
             if f == "Comments" and len(val) > 300:
                 st.markdown(f"**{FIELD_LABELS[f]}:** {val}")
-                st.warning(f"⚠️ Comments are {len(val)} characters "
+                st.warning(f"[!] Comments are {len(val)} characters "
                            f"({len(val)-300} over the 300-char label limit). "
                            "Only the first 300 characters will print on the label.")
             else:
                 st.markdown(f"**{FIELD_LABELS[f]}:** {val}")
     with col2:
         for f in right_fields:
-            st.markdown(f"**{FIELD_LABELS[f]}:** {row.get(f,'') or '—'}")
+            st.markdown(f"**{FIELD_LABELS[f]}:** {row.get(f,'') or '--'}")
 
-    # Background Info — always shown in full with its own section
+    # Background Info -- always shown in full with its own section
     bg = str(row.get("BackgroundInfo") or "").strip()
     if bg:
         st.markdown("---")
         st.markdown("**Background Information**")
         st.markdown(bg)
         if len(bg) > 300:
-            st.warning(f"⚠️ Background Info is {len(bg)} characters "
+            st.warning(f"[!] Background Info is {len(bg)} characters "
                        f"({len(bg)-300} over the 300-char label limit). "
                        "Only the first 300 characters will print on the label.")
 
@@ -957,7 +957,7 @@ def _browse_edit_form(row: dict, is_duplicate: bool = False):
                                value=row.get("BackgroundInfo",""), height=80,
                                help="Max 300 chars for label printing", max_chars=300)
 
-        if st.form_submit_button("💾  Save Changes", use_container_width=True):
+        if st.form_submit_button("?  Save Changes", use_container_width=True):
             db_update(fn, {
                 "Family": family, "Variety": variety,
                 "SeedSource": source, "Comments": comments,
@@ -975,7 +975,7 @@ def _browse_edit_form(row: dict, is_duplicate: bool = False):
 def _browse_duplicate_form(source_row: dict):
     """Duplicate a seed record with a new file number."""
     next_fn = db_next_fn()
-    st.info(f"Duplicating **#{source_row['FileNumber']} {source_row['Family']} — "
+    st.info(f"Duplicating **#{source_row['FileNumber']} {source_row['Family']} -- "
             f"{source_row['Variety']}** as new record **#{next_fn}**. "
             "Edit any fields then save.")
     with st.form(key=f"dup_form_{source_row['FileNumber']}"):
@@ -1014,7 +1014,7 @@ def _browse_duplicate_form(source_row: dict):
         bg_info = st.text_area("Background Info",
                                value=source_row.get("BackgroundInfo",""), height=80)
 
-        if st.form_submit_button("💾  Save as New Record", use_container_width=True):
+        if st.form_submit_button("?  Save as New Record", use_container_width=True):
             fn = int(fn)
             _conn = get_pg_conn()
             _cur  = _conn.cursor()
@@ -1035,15 +1035,15 @@ def _browse_duplicate_form(source_row: dict):
                     "Year": year, "SoilTemperature": soil_t,
                     "Germination": germ, "BackgroundInfo": bg_info,
                 })
-                st.success(f"✅ New seed #{fn} saved as a duplicate of "
+                st.success(f"[ok] New seed #{fn} saved as a duplicate of "
                            f"#{source_row['FileNumber']}.")
                 show_download_bar()
                 st.rerun()
 
 
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 # PAGE: ADD SEEDS
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 def page_add():
     page_header("Add Seeds", "Enter a new seed record into the library")
 
@@ -1077,7 +1077,7 @@ def page_add():
                                help="Maximum 300 characters for label printing",
                                max_chars=300)
 
-        submitted = st.form_submit_button("💾  Save Seed", use_container_width=True)
+        submitted = st.form_submit_button("?  Save Seed", use_container_width=True)
 
     if submitted:
         fn = int(fn)
@@ -1104,19 +1104,19 @@ def page_add():
                     "Year": year, "SoilTemperature": soil_t,
                     "Germination": germ, "BackgroundInfo": bg_info,
                 })
-                st.success(f"✅ Seed #{fn} — {family} added successfully!")
+                st.success(f"[ok] Seed #{fn} -- {family} added successfully!")
                 show_download_bar()
 
 
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 # PAGE: REMOVE SEEDS
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 def page_remove():
     page_header("Remove Seeds", "Search for and permanently delete seed records")
 
     col_s, col_b1, col_b2 = st.columns([4, 1, 1])
     with col_s:
-        term = st.text_input("Search", placeholder="Family, variety, or file number…",
+        term = st.text_input("Search", placeholder="Family, variety, or file number...",
                              label_visibility="collapsed", key="remove_search")
     with col_b1:
         if st.button("Search", use_container_width=True):
@@ -1170,10 +1170,10 @@ def page_remove():
             f"I confirm I want to permanently delete {n} seed record(s)",
             key="remove_confirm")
         if confirm:
-            if st.button(f"🗑  Delete {n} Selected Record(s)",
+            if st.button(f"?  Delete {n} Selected Record(s)",
                          type="primary", use_container_width=True):
                 db_delete(selected_fns)
-                st.success(f"✅ {n} record(s) deleted.")
+                st.success(f"[ok] {n} record(s) deleted.")
                 show_download_bar()
                 st.session_state.remove_term = active_term
                 st.rerun()
@@ -1181,17 +1181,17 @@ def page_remove():
         st.info("Check the Select box on one or more rows to delete them.")
 
 
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 # PAGE: PRINT LABELS
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 def page_labels():
     page_header("Print Seed Labels",
-                "Avery 94207 — 2″ × 4″ labels, 10 per sheet (2 cols × 5 rows)")
+                "Avery 94207 -- 2? x 4? labels, 10 per sheet (2 cols x 5 rows)")
 
     # Search
     col_s, col_b1, col_b2 = st.columns([4, 1, 1])
     with col_s:
-        term = st.text_input("Search", placeholder="Family, variety, or file number…",
+        term = st.text_input("Search", placeholder="Family, variety, or file number...",
                              label_visibility="collapsed", key="label_search")
     with col_b1:
         if st.button("Search", use_container_width=True, key="lbl_search_btn"):
@@ -1266,7 +1266,7 @@ def page_labels():
             total_labels += qty
 
     n_seeds = len(label_data)
-    st.info(f"**{n_seeds}** seed(s) selected — **{total_labels}** total labels")
+    st.info(f"**{n_seeds}** seed(s) selected -- **{total_labels}** total labels")
 
     col_a, col_b, col_c = st.columns(3)
     with col_a:
@@ -1284,15 +1284,15 @@ def page_labels():
     if n_seeds == 0:
         st.warning("Set Qty > 0 on at least one seed to generate a PDF.")
     else:
-        if st.button("🖨  Generate & Download PDF",
+        if st.button("  Generate & Download PDF",
                      type="primary", use_container_width=True):
-            with st.spinner("Generating PDF…"):
+            with st.spinner("Generating PDF..."):
                 pdf_bytes = generate_labels_pdf(
                     label_data,
                     include_background=st.session_state.get("label_include_bg", False))
             if pdf_bytes:
                 st.download_button(
-                    label="⬇️  Download seed_labels.pdf",
+                    label="  Download seed_labels.pdf",
                     data=pdf_bytes,
                     file_name="seed_labels.pdf",
                     mime="application/pdf",
@@ -1305,9 +1305,9 @@ def page_labels():
                 )
 
 
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 # SIDEBAR NAVIGATION
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 def sidebar_nav():
     PAGES = ["Home", "Browse Seeds", "Add Seeds", "Remove Seeds", "Print Labels"]
 
@@ -1319,7 +1319,7 @@ def sidebar_nav():
     current_idx = st.session_state.get("_nav_index", 0)
 
     with st.sidebar:
-        st.markdown("## 🌹 CCMGA\n### Seed Library")
+        st.markdown("## [rose] CCMGA\n### Seed Library")
         st.markdown("---")
         page = st.radio(
             "Navigate",
@@ -1333,21 +1333,21 @@ def sidebar_nav():
         st.markdown("---")
         st.markdown(
             "<small>Cochise County Master Gardener Association<br/>"
-            "v1.0 — Claude AI + Alan Borhauer</small>",
+            "v1.0 -- Claude AI + Alan Borhauer</small>",
             unsafe_allow_html=True,
         )
         st.markdown("---")
-        if st.button("🔒  Log Out", use_container_width=True):
+        if st.button("[lock]  Log Out", use_container_width=True):
             st.session_state.authenticated = False
             st.rerun()
     return page
 
 
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 # MAIN
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 def main():
-    # Gate — must authenticate before anything else renders
+    # Gate -- must authenticate before anything else renders
     check_password()
 
     selected = sidebar_nav()
