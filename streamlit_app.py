@@ -1077,13 +1077,12 @@ def page_home():
 
 | | |
 |---|---|
-| **Version** | 1.0 |
+| **Version** | 2.0 |
 | **Built for** | Cochise County Master Gardener Association |
-| **Labels** | Avery 94207  (2? x 4?, 10 per sheet) |
-| **Platform** | Python ? Streamlit ? ReportLab |
-| **Credits** | Claude AI (Anthropic) + Alan Borhauer |
+| **Labels** | Avery 94207  (2" x 4, 10 per sheet) |
+| **Platform** | Python + Streamlit + ReportLab |
+| **Credits** | Alan Borhauer |
     """)
-
     # -- Seeds with comments or background info over 300 chars -------
     over_limit = db_over_limit()
 
