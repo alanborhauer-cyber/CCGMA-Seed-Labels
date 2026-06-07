@@ -1077,12 +1077,13 @@ def page_home():
 
 | | |
 |---|---|
-| **Version** | 2.0 |
+| **Version** | 1.0 |
 | **Built for** | Cochise County Master Gardener Association |
-| **Labels** | Avery 94207  (2" x 4", 10 per sheet) |
-| **Platform** | Python + Streamlit + ReportLab |
-| **Credits** | Alan Borhauer |
+| **Labels** | Avery 94207  (2? x 4?, 10 per sheet) |
+| **Platform** | Python ? Streamlit ? ReportLab |
+| **Credits** | Claude AI (Anthropic) + Alan Borhauer |
     """)
+
     # -- Seeds with comments or background info over 300 chars -------
     over_limit = db_over_limit()
 
@@ -1510,9 +1511,9 @@ def page_remove():
 # -------------------------------------------------------------
 def page_labels():
     page_header("Print Seed Labels",
-                "Avery 94207 -- 2? x 4? labels, 10 per sheet (2 cols x 5 rows)")
+                "Avery 94207 -- 2 inch x 4 inch labels, 10 per sheet (2 cols x 5 rows)")
 
-    # Search
+    # Search bar
     col_s, col_b1, col_b2 = st.columns([4, 1, 1])
     with col_s:
         term = st.text_input("Search", placeholder="Family, variety, or file number...",
@@ -1520,70 +1521,70 @@ def page_labels():
     with col_b1:
         if st.button("Search", use_container_width=True, key="lbl_search_btn"):
             st.session_state.label_term = term
+            st.rerun()
     with col_b2:
         if st.button("Load All", use_container_width=True):
             st.session_state.label_term = ""
+            st.rerun()
 
-    active_term = st.session_state.get("label_term", "")
-    rows = db_search(active_term)
-
-    if not rows:
-        st.info("No seeds found.")
-        return
-
-    import pandas as pd
-
-    # Build label selection table with qty column
+    # Auto-init on first visit
+    if "label_term" not in st.session_state:
+        st.session_state.label_term = ""
     if "label_qtys" not in st.session_state:
         st.session_state.label_qtys = {}
 
-    df = pd.DataFrame([{
-        "Print": st.session_state.label_qtys.get(r["FileNumber"], 0) > 0,
-        "File #": r["FileNumber"],
-        "Family": sf(r,"Family"),
-        "Variety": sf(r,"Variety"),
-        "Season": sf(r,"Season"),
-        "# Seeds": r["NumSeeds"],
-        "Qty": st.session_state.label_qtys.get(r["FileNumber"], 0),
-    } for r in rows])
+    rows = db_search(st.session_state.label_term)
 
-    st.caption("Set **Qty** to 1 or more to include in print job. "
-               "Uncheck **Print** or set Qty to 0 to exclude.")
+    if not rows:
+        if st.session_state.label_term:
+            st.info(f"No seeds match. Click Load All.")
+        else:
+            st.warning("No seeds found in database.")
+        return
+
+    st.caption(f"{len(rows)} seed(s) loaded. Set Qty >= 1 to include in print job.")
+
     include_bg = st.checkbox(
-        "Also print Background Info as a separate label for each selected seed",
+        "Also print Background Info as a separate label (only for seeds that have it)",
         key="label_include_bg",
     )
 
-    edited = st.data_editor(
-        df,
-        use_container_width=True,
-        hide_index=True,
-        height=380,
-        column_config={
-            "Print": st.column_config.CheckboxColumn(
-                "Print", default=False),
-            "Qty": st.column_config.NumberColumn(
-                "Qty", min_value=0, max_value=99, step=1, default=0),
-            "File #": st.column_config.NumberColumn("File #", disabled=True),
-        },
-        disabled=["File #", "Family", "Variety", "Season", "# Seeds"],
-        key="label_editor",
-    )
+    # Per-seed rows: checkbox + qty number input
+    st.markdown("**Select seeds and quantities:**")
+    hdr = st.columns([1, 4, 4, 2, 2])
+    hdr[0].markdown("**Print**")
+    hdr[1].markdown("**Family**")
+    hdr[2].markdown("**Variety**")
+    hdr[3].markdown("**Season**")
+    hdr[4].markdown("**Qty**")
+    st.divider()
 
-    # Persist qty changes
-    for i in range(len(edited)):
-        fn  = int(edited.iloc[i]["File #"])
-        qty = int(edited.iloc[i]["Qty"])
-        if edited.iloc[i]["Print"] and qty == 0:
-            qty = 1
-        if not edited.iloc[i]["Print"]:
-            qty = 0
-        st.session_state.label_qtys[fn] = qty
-
+    for r in rows:
+        fn      = int(r["FileNumber"])
+        cur_qty = st.session_state.label_qtys.get(fn, 0)
+        cols    = st.columns([1, 4, 4, 2, 2])
+        checked = cols[0].checkbox(
+            "", value=cur_qty > 0,
+            key=f"lbl_chk_{fn}",
+            label_visibility="collapsed")
+        cols[1].write(sf(r, "Family"))
+        cols[2].write(sf(r, "Variety"))
+        cols[3].write(sf(r, "Season"))
+        new_qty = cols[4].number_input(
+            "", min_value=0, max_value=99,
+            value=max(cur_qty, 1 if checked else 0),
+            step=1, key=f"lbl_qty_{fn}",
+            label_visibility="collapsed")
+        if checked and new_qty == 0:
+            new_qty = 1
+        if not checked:
+            new_qty = 0
+        st.session_state.label_qtys[fn] = new_qty
 
     # Summary
-    label_data = []
-    row_lookup = {int(r["FileNumber"]): r for r in rows}
+    st.divider()
+    label_data   = []
+    row_lookup   = {int(r["FileNumber"]): r for r in rows}
     total_labels = 0
     for fn, qty in st.session_state.label_qtys.items():
         if qty > 0 and fn in row_lookup:
@@ -1591,7 +1592,6 @@ def page_labels():
             total_labels += qty
 
     n_seeds = len(label_data)
-    st.divider()
     st.info(f"**{n_seeds}** seed(s) selected -- **{total_labels}** total labels")
 
     col_a, col_b = st.columns(2)
@@ -1606,11 +1606,10 @@ def page_labels():
             st.rerun()
 
     st.markdown("---")
-
     if n_seeds == 0:
-        st.warning("Set Qty > 0 on at least one seed to generate a PDF.")
+        st.warning("Set Qty to 1 or more on at least one seed.")
     else:
-        if st.button("  Generate & Download PDF",
+        if st.button("Generate & Download PDF",
                      type="primary", use_container_width=True):
             with st.spinner("Generating PDF..."):
                 pdf_bytes = generate_labels_pdf(
@@ -1618,22 +1617,18 @@ def page_labels():
                     include_background=st.session_state.get("label_include_bg", False))
             if pdf_bytes:
                 st.download_button(
-                    label="  Download seed_labels.pdf",
+                    label="Download seed_labels.pdf",
                     data=pdf_bytes,
                     file_name="seed_labels.pdf",
                     mime="application/pdf",
                     use_container_width=True,
                 )
                 st.success(
-                    f"PDF ready! {total_labels} labels across "
+                    f"PDF ready -- {total_labels} labels across "
                     f"{-(-total_labels // 10)} page(s). "
-                    "Print at **Actual Size** (100%) for correct Avery alignment."
-                )
+                    "Print at Actual Size (100%).")
 
 
-# -------------------------------------------------------------
-# SIDEBAR NAVIGATION
-# -------------------------------------------------------------
 def page_admin():
     """Admin panel -- manage user approvals and accounts."""
     if st.session_state.get("user_role") != "admin":
@@ -1658,6 +1653,7 @@ def page_admin():
                 if c2.button("Approve", key=f"apr_{u['id']}",
                              use_container_width=True, type="primary"):
                     admin_approve(u["id"])
+                    st.session_state["current_page"] = "admin"
                     # Notify user by email
                     try:
                         msg = MIMEText(
@@ -1680,6 +1676,7 @@ def page_admin():
                 if c3.button("Deny", key=f"deny_{u['id']}",
                              use_container_width=True):
                     admin_delete_user(u["id"])
+                    st.session_state["current_page"] = "admin"
                     st.rerun()
                 st.divider()
 
@@ -1763,9 +1760,10 @@ def sidebar_nav():
 
         # Admin panel link
         if urole == "admin":
-            if st.button("🛡️ Admin Panel", use_container_width=True):
-                st.session_state["_nav_index"] = 0
-                st.session_state["show_admin"] = True
+            is_on_admin = st.session_state.get("current_page") == "admin"
+            if st.button("Admin Panel" + (" (active)" if is_on_admin else ""),
+                         use_container_width=True):
+                st.session_state["current_page"] = "admin"
                 st.rerun()
 
         st.markdown(
@@ -1791,8 +1789,17 @@ def main():
 
     selected = sidebar_nav()
 
-    # Admin panel takes priority if triggered
-    if st.session_state.pop("show_admin", False):
+    # "current_page" persists until user clicks a sidebar radio item
+    # Clicking a radio item clears current_page so we go back to normal nav
+    # We detect a radio change by storing the previous selection
+    prev = st.session_state.get("_prev_selected", selected)
+    if selected != prev:
+        # User clicked a different radio item -- leave admin mode
+        st.session_state.pop("current_page", None)
+    st.session_state["_prev_selected"] = selected
+
+    current_page = st.session_state.get("current_page", "")
+    if current_page == "admin":
         page_admin()
         return
 
