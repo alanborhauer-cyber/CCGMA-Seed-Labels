@@ -679,9 +679,10 @@ def user_register(email: str, full_name: str, password: str) -> str:
         cur.close()
         conn.close()
         # Send email
-        if _send_verification_email(email, code):
+        ok, err = _send_verification_email(email, code)
+        if ok:
             return "ok"
-        return "email_failed"
+        return f"email_failed: {err}"
     except Exception as e:
         if "unique" in str(e).lower() or "duplicate" in str(e).lower():
             return "duplicate"
