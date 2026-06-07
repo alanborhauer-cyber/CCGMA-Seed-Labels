@@ -96,6 +96,8 @@ def _auth_login(col):
                     st.session_state.user_email    = email
                     st.session_state.user_name     = user["full_name"]
                     st.session_state.user_role     = user["role"]
+                    st.session_state.pop("current_page", None)
+                    st.session_state.pop("_prev_selected", None)
                     st.rerun()
     with c2:
         if st.button("Register", use_container_width=True):
