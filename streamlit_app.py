@@ -1555,6 +1555,33 @@ def page_labels():
         key="label_include_bg",
     )
 
+    edited = st.data_editor(
+        df,
+        use_container_width=True,
+        hide_index=True,
+        height=380,
+        column_config={
+            "Print": st.column_config.CheckboxColumn(
+                "Print", default=False),
+            "Qty": st.column_config.NumberColumn(
+                "Qty", min_value=0, max_value=99, step=1, default=0),
+            "File #": st.column_config.NumberColumn("File #", disabled=True),
+        },
+        disabled=["File #", "Family", "Variety", "Season", "# Seeds"],
+        key="label_editor",
+    )
+
+    # Persist qty changes
+    for i in range(len(edited)):
+        fn  = int(edited.iloc[i]["File #"])
+        qty = int(edited.iloc[i]["Qty"])
+        if edited.iloc[i]["Print"] and qty == 0:
+            qty = 1
+        if not edited.iloc[i]["Print"]:
+            qty = 0
+        st.session_state.label_qtys[fn] = qty
+
+
     # Summary
     label_data = []
     row_lookup = {int(r["FileNumber"]): r for r in rows}
