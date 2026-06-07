@@ -612,28 +612,30 @@ def _check_password_hash(plain: str, hashed: str) -> bool:
         return False
 
 
-def _send_verification_email(to_email: str, code: str) -> bool:
-    """Send 6-digit code via SMTP (Gmail App Password)."""
+def _send_verification_email(to_email: str, code: str) -> tuple:
+    """Send 6-digit code via SMTP. Returns (success, error_message)."""
+    required = ["SMTP_SERVER", "SMTP_PORT", "EMAIL_FROM", "EMAIL_PASSWORD"]
+    missing = [k for k in required if k not in st.secrets]
+    if missing:
+        return False, f"Missing secrets: {', '.join(missing)}"
     try:
         msg = MIMEText(
             f"Your 6-digit verification code for the CCMGA Seed Library is:\n\n"
-            f"    {code}\n\n"
-            f"This code expires in 15 minutes.\n\n"
-            f"If you did not request this, please ignore this email."
+            f"    {code}\n\nThis code expires in 15 minutes."
         )
         msg["Subject"] = "Verify Your CCMGA Seed Library Account"
         msg["From"]    = st.secrets["EMAIL_FROM"]
         msg["To"]      = to_email
         with smtplib.SMTP(st.secrets["SMTP_SERVER"],
                           int(st.secrets["SMTP_PORT"])) as server:
+            server.ehlo()
             server.starttls()
-            server.login(st.secrets["EMAIL_FROM"],
-                         st.secrets["EMAIL_PASSWORD"])
+            server.ehlo()
+            server.login(st.secrets["EMAIL_FROM"], st.secrets["EMAIL_PASSWORD"])
             server.send_message(msg)
-        return True
+        return True, ""
     except Exception as e:
-        st.error(f"Email send failed: {e}")
-        return False
+        return False, str(e)
 
 
 def user_login(email: str, password: str) -> dict | None:
