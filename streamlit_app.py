@@ -1709,7 +1709,6 @@ def page_admin():
                 if c1.button("Approve", use_container_width=True,
                              type="primary"):
                     admin_approve(sel_user["id"])
-                    st.session_state["current_page"] = "admin"
                     st.rerun()
             new_role = c2.selectbox(
                 "Role", ["user","admin"],
@@ -1726,7 +1725,6 @@ def page_admin():
             if c3.button("Delete User", use_container_width=True):
                 if sel_user["role"] != "admin":
                     admin_delete_user(sel_user["id"])
-                    st.session_state["current_page"] = "admin"
                     st.rerun()
                 else:
                     st.error("Cannot delete an admin account.")
@@ -1761,7 +1759,8 @@ def sidebar_nav():
         st.markdown("---")
 
         # Admin panel link
-       if urole == "admin": is_on_admin = st.session_state.get("current_page") == "admin"
+        if urole == "admin":
+            is_on_admin = st.session_state.get("current_page") == "admin"
             if st.button("Admin Panel" + (" (active)" if is_on_admin else ""),
                          use_container_width=True):
                 st.session_state["current_page"] = "admin"
@@ -1788,10 +1787,14 @@ def main():
     # Gate -- must authenticate before anything else renders
     check_password()
 
-   selected = sidebar_nav()
+    selected = sidebar_nav()
 
+    # "current_page" persists until user clicks a sidebar radio item
+    # Clicking a radio item clears current_page so we go back to normal nav
+    # We detect a radio change by storing the previous selection
     prev = st.session_state.get("_prev_selected", selected)
     if selected != prev:
+        # User clicked a different radio item -- leave admin mode
         st.session_state.pop("current_page", None)
     st.session_state["_prev_selected"] = selected
 
@@ -1810,6 +1813,7 @@ def main():
         page_remove()
     elif selected == "Print Labels":
         page_labels()
+
 
 if __name__ == "__main__":
     main()
