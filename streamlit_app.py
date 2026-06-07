@@ -1761,8 +1761,7 @@ def sidebar_nav():
         st.markdown("---")
 
         # Admin panel link
-       if urole == "admin":
-            is_on_admin = st.session_state.get("current_page") == "admin"
+       if urole == "admin": is_on_admin = st.session_state.get("current_page") == "admin"
             if st.button("Admin Panel" + (" (active)" if is_on_admin else ""),
                          use_container_width=True):
                 st.session_state["current_page"] = "admin"
