@@ -129,8 +129,12 @@ def _auth_register(col):
                     st.rerun()
                 elif result == "duplicate":
                     st.error("That email is already registered. Try logging in.")
-                elif result == "email_failed":
-                    st.warning("Account created but email failed. Contact admin.")
+                elif result.startswith("email_failed"):
+                    detail = result.replace("email_failed: ", "")
+                    st.warning(f"Account created but email failed: {detail}\n\nCheck SMTP secrets. For Gmail use an App Password.")
+                    st.session_state.auth_email = email
+                    st.session_state.auth_step  = "verify"
+                    st.rerun()
                 else:
                     st.error(f"Registration error: {result}")
     with c2:
