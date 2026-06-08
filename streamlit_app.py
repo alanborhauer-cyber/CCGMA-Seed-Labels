@@ -745,9 +745,12 @@ def user_resend_code(email: str) -> bool:
     conn.commit()
     cur.close()
     conn.close()
-    return _send_verification_email(email, code)
+  success, _ = _send_verification_email(
+    email,
+    code
+)
 
-
+return success
 def admin_get_pending() -> list[dict]:
     """Return all verified-but-not-approved users."""
     conn = get_pg_conn()
