@@ -731,7 +731,7 @@ is_verified=TRUE,
 
 verify_code=NULL,
 
-verify_expires=NULL
+verify_expires=NULL,
 
 WHERE email=%s
     conn.commit()
