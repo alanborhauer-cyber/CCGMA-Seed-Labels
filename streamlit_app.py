@@ -723,8 +723,17 @@ def user_verify(email: str, code: str) -> str:
             cur.close(); conn.close()
             return "expired"
     cur.execute(
-        "UPDATE app_users SET is_verified = TRUE WHERE email = %s",
-        (email.lower().strip(),))
+       UPDATE app_users
+
+SET
+
+is_verified=TRUE,
+
+verify_code=NULL,
+
+verify_expires=NULL
+
+WHERE email=%s
     conn.commit()
     cur.close()
     conn.close()
