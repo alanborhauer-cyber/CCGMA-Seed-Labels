@@ -170,9 +170,9 @@ def _auth_verify(col):
                 else:
                     st.error("Invalid code. Please try again.")
     with c2:
-        if st.button("Resend Code", use_container_width=True):
+        if st.button("Resend Code", use_container_width="stretch"):
             with st.spinner("Sending..."):
-                success = user_resend_code(email)
+                ok = user_resend_code(email)
         if success is True:
             st.success("New code sent!")
         else:
