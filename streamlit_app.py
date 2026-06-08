@@ -149,8 +149,7 @@ def _auth_verify(col):
     email = st.session_state.get("auth_email", "")
     st.markdown("#### Verify Your Email")
     st.info(f"A 6-digit code was sent to **{email}**")
-    code = st.text_input("Enter 6-digit code", key="verify_code",
-                          max_chars=6)
+    code = st.text_input("Enter 6-digit code", key="verify_code", max_chars=6)
 
     c1, c2, c3 = st.columns(3)
     with c1:
@@ -169,20 +168,22 @@ def _auth_verify(col):
                     st.error("Code expired. Request a new one.")
                 else:
                     st.error("Invalid code. Please try again.")
+                    
     with c2:
-        if st.button("Resend Code", use_container_width="True"):
+        # Fixed: Changed width="stretch" to use_container_width=True
+        if st.button("Resend Code", use_container_width=True):
             with st.spinner("Sending..."):
                 success = user_resend_code(email)
-        if success:
-            st.success("New code sent!")
-        else:
-            st.error("Failed to send. Contact admin.")
+            # Fixed: Moved the success check inside the button scope
+            if success:
+                st.success("New code sent!")
+            else:
+                st.error("Failed to send. Contact admin.")
         
     with c3:
         if st.button("Back to Login", use_container_width=True):
             st.session_state.auth_step = "login"
             st.rerun()
-
 
 
 # -------------------------------------------------------------
