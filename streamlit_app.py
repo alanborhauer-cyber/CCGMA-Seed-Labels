@@ -753,7 +753,7 @@ def user_resend_code(email: str) -> bool:
     conn.commit()
     cur.close()
     conn.close()
-      success, _ = _send_verification_email(
+    success, _ = _send_verification_email(
         email,
         code
 )
