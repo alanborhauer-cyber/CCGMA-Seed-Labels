@@ -1145,7 +1145,7 @@ def page_home():
 
 | | |
 |---|---|
-| **Version** | 2.0 |
+| **Version** | 2.1 6.8.2026 |
 | **Built for** | Cochise County Master Gardener Association |
 | **Labels** | Avery 94207  (2" x 4", 10 per sheet) |
 | **Platform** | Python + Streamlit + ReportLab |
