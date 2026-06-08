@@ -757,8 +757,8 @@ def user_resend_code(email: str) -> bool:
         email,
         code
 )
+    return success
 
-return success
 def admin_get_pending() -> list[dict]:
     """Return all verified-but-not-approved users."""
     conn = get_pg_conn()
