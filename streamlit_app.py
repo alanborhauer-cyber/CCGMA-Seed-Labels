@@ -737,7 +737,7 @@ def user_verify(email: str, code: str) -> str:
     cur.close()
     conn.close()
     return "ok"
-)
+    )
 
 def user_resend_code(email: str) -> bool:
     """Generate a new code and resend verification email."""
