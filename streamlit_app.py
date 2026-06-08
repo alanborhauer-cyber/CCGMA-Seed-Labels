@@ -176,7 +176,7 @@ def _auth_verify(col):
         if success is True:
             st.success("New code sent!")
         else:
-        st.error("Failed to send.")
+            st.error("Failed to send.")
         
     with c3:
         if st.button("Back to Login", use_container_width=True):
