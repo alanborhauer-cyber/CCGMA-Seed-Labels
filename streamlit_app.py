@@ -732,7 +732,7 @@ def user_verify(email: str, code: str) -> str:
         WHERE email = %s
         """,
         (email.lower().strip(),)
-     
+    )
     conn.commit()
     cur.close()
     conn.close()
