@@ -125,7 +125,7 @@ def _auth_register(col):
                 with st.spinner("Creating account..."):
                     result = user_register(email, name, password)
                 if result == "ok":
-                    st.session_state.auth_email = email
+                    st.session_state.auth_email = email.lower().strip()
                     st.session_state.auth_step  = "verify"
                     st.success("Account created! Check your email for the verification code.")
                     st.rerun()
@@ -134,7 +134,7 @@ def _auth_register(col):
                 elif result.startswith("email_failed"):
                     detail = result.replace("email_failed: ", "")
                     st.warning(f"Account created but email failed: {detail}\n\nCheck SMTP secrets. For Gmail use an App Password.")
-                    st.session_state.auth_email = email
+                    st.session_state.auth_email = email.lower().strip()
                     st.session_state.auth_step  = "verify"
                     st.rerun()
                 else:
@@ -158,12 +158,13 @@ def _auth_verify(col):
             if not code or len(code) != 6:
                 st.error("Enter the 6-digit code.")
             else:
-                result = user_verify(email, code)
+                result = user_verify(email, code.strip())
                 if result == "ok":
                     st.success(
                         "✅ Email verified! Your account is pending "
                         "admin approval. You will receive an email when approved.")
                     st.session_state.auth_step = "login"
+                    st.rerun()
                 elif result == "expired":
                     st.error("Code expired. Request a new one.")
                 else:
