@@ -172,8 +172,8 @@ def _auth_verify(col):
     with c2:
         if st.button("Resend Code", width="stretch"):
             with st.spinner("Sending..."):
-                ok = user_resend_code(email)
-        if ok:
+                success = user_resend_code(email)
+        if success:
             st.success("New code sent!")
         else:
             st.error("Failed to send. Contact admin.")
