@@ -170,7 +170,7 @@ def _auth_verify(col):
                 else:
                     st.error("Invalid code. Please try again.")
     with c2:
-        if st.button("Resend Code", _use_container_width="True"):
+        if st.button("Resend Code", use_container_width="True"):
             with st.spinner("Sending..."):
                 success = user_resend_code(email)
         if success:
@@ -179,7 +179,7 @@ def _auth_verify(col):
             st.error("Failed to send. Contact admin.")
         
     with c3:
-        if st.button("Back to Login", _use_container_width=True):
+        if st.button("Back to Login", use_container_width=True):
             st.session_state.auth_step = "login"
             st.rerun()
 
