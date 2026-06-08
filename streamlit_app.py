@@ -678,6 +678,10 @@ def user_register(email: str, full_name: str, password: str) -> str:
         """, (email.lower().strip(), full_name,
               _hash_password(password), code, expires))
         conn.commit()
+        _send_admin_notification(
+    full_name,
+    email
+)
         cur.close()
         conn.close()
         # Send email
@@ -814,7 +818,51 @@ def update_last_login(email: str):
     cur.close()
     conn.close()
 
+def _send_admin_notification(name,email):
 
+    admin_email = st.secrets["ADMIN_EMAIL"]
+
+    msg = MIMEText(
+        f"""
+New account awaiting approval
+
+Name:
+
+{name}
+
+Email:
+
+{email}
+
+Login to admin panel.
+"""
+    )
+
+    msg["Subject"]="New User Registration"
+
+    msg["From"]=st.secrets["EMAIL_FROM"]
+
+    msg["To"]=admin_email
+
+    try:
+
+        with smtplib.SMTP(
+            st.secrets["SMTP_SERVER"],
+            int(st.secrets["SMTP_PORT"])
+        ) as srv:
+
+            srv.starttls()
+
+            srv.login(
+                st.secrets["EMAIL_FROM"],
+                st.secrets["EMAIL_PASSWORD"]
+            )
+
+            srv.send_message(msg)
+
+    except:
+
+        pass
 def generate_labels_pdf(label_data: list,
                         include_background: bool = False) -> bytes | None:
     """Returns PDF bytes or None on error.
