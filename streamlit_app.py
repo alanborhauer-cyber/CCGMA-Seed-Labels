@@ -912,7 +912,7 @@ def generate_labels_pdf(label_data: list,
     MARGIN_LEFT     = 0.1875 * inch
     MARGIN_RIGHT    = 0.1875 * inch
     GUTTER_W = 0.125 * inch
-    LABEL_W         = (PAGE_W - MARGIN_LEFT - MARGIN_RIGHT) / 2
+    LABEL_W = (PAGE_W - MARGIN_LEFT - MARGIN_RIGHT - GUTTER_W) / 2
     LABEL_H         = 2.00  * inch
     COLS, ROWS      = 2, 5
     PER_PAGE        = COLS * ROWS
