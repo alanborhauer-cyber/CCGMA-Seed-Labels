@@ -1837,7 +1837,7 @@ def sidebar_nav():
 
         st.markdown(
             "<small>Cochise County Master Gardener Association<br/>"
-            "v2.0 6.8.2026 Alan Borhauer</small>",
+            "v3.0 6.9.2026 Alan Borhauer</small>",
             unsafe_allow_html=True,
         )
         st.markdown("---")
