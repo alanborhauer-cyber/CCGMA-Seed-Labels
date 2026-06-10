@@ -989,14 +989,14 @@ def generate_labels_pdf(label_data: list,
 
     PAGE_W, PAGE_H  = letter
     MARGIN_TOP      = 0.50 * inch
-    MARGIN_LEFT     = 0.16 * inch
-    MARGIN_RIGHT    = 0.16 * inch
+    MARGIN_LEFT     = 0.25 * inch
+    MARGIN_RIGHT    = 0.25 * inch
     LABEL_W         = (PAGE_W - MARGIN_LEFT - MARGIN_RIGHT) / 2
     LABEL_H         = 2.00  * inch
     COLS, ROWS      = 2, 5
     PER_PAGE        = COLS * ROWS
 
-    PAD_L, PAD_R, PAD_T, PAD_B = 6, 4, 4, 3
+    PAD_L, PAD_R, PAD_T, PAD_B = 6, 6, 4, 3
     TITLE_H         = 28
     LEFT_FRAC       = 2 / 3
 
