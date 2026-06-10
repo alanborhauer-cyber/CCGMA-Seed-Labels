@@ -987,29 +987,20 @@ def generate_labels_pdf(label_data: list,
     if not labels:
         return None
 
-    PAGE_W, PAGE_H = letter
+    # Avery 94207 exact dimensions
+    PAGE_W, PAGE_H  = letter              # 8.5 x 11 inches
+    MARGIN_TOP      = 0.50 * inch
+    MARGIN_LEFT     = 0.25 * inch
+    MARGIN_RIGHT    = 0.25 * inch
+    LABEL_W         = 4.00 * inch         # hard-coded, not calculated
+    LABEL_H         = 2.00 * inch
+    GUTTER          = 0.125 * inch
+    LEFT_X          = 0.25 * inch         # left edge of col 0
+    RIGHT_X         = 4.375 * inch        # 0.25 + 4.00 + 0.125
+    COLS, ROWS      = 2, 5
+    PER_PAGE        = COLS * ROWS
 
-    MARGIN_LEFT  = 0.25 * inch
-    MARGIN_RIGHT = 0.25 * inch
-    MARGIN_TOP   = 0.50 * inch
-
-    LABEL_W      = 4.00 * inch
-    LABEL_H      = 2.00 * inch
-
-    GUTTER       = 0.125 * inch
-
-    COLS = 2
-    ROWS = 5
-    PER_PAGE = COLS * ROWS
-
-    LEFT_X  = 0.25 * inch
-    RIGHT_X = 4.375 * inch 
-
-    PAD_L = 5
-    PAD_R = 5
-    PAD_T = 5
-    PAD_B = 5
-    
+    PAD_L, PAD_R, PAD_T, PAD_B = 5, 5, 5, 5
     TITLE_H         = 28
     LEFT_FRAC       = 2 / 3
 
@@ -1045,11 +1036,7 @@ def generate_labels_pdf(label_data: list,
         for slot, (row, is_bg) in enumerate(page_labels):
             col_num = slot % COLS
             row_num = slot // COLS
-            if col_num == 0:
-                x = LEFT_X
-            else:
-                x = RIGHT_X
-           
+            lx = LEFT_X if col_num == 0 else RIGHT_X
             ly = PAGE_H - MARGIN_TOP - (row_num + 1) * LABEL_H
 
             # Extract fields (needed for both label types)
