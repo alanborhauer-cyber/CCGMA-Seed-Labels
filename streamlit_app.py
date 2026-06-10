@@ -1045,7 +1045,11 @@ def generate_labels_pdf(label_data: list,
         for slot, (row, is_bg) in enumerate(page_labels):
             col_num = slot % COLS
             row_num = slot // COLS
-            lx = MARGIN_LEFT + col_num * LABEL_W
+            if col == 0:
+                x = LEFT_X
+            else:
+                x = RIGHT_X
+           
             ly = PAGE_H - MARGIN_TOP - (row_num + 1) * LABEL_H
 
             # Extract fields (needed for both label types)
