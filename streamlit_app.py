@@ -994,7 +994,7 @@ def generate_labels_pdf(label_data: list,
 
     # Avery 94207 exact dimensions
     PAGE_W, PAGE_H  = letter              # 8.5 x 11 inches
-    MARGIN_TOP      = 0.50 * inch
+    MARGIN_TOP      = 0.25 * inch
     MARGIN_LEFT     = 0.125 * inch
     MARGIN_RIGHT    = 0.125 * inch
     LABEL_W         = 4.00 * inch         # hard-coded, not calculated
