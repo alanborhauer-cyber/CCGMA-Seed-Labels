@@ -1159,6 +1159,7 @@ def generate_labels_pdf(label_data: list,
 # -------------------------------------------------------------
 # SHARED UI HELPERS
 # -------------------------------------------------------------
+@st.fragment
 def show_download_bar():
     """Show download button if updated xlsx bytes are available."""
     xlsx_bytes = st.session_state.get("xlsx_download_bytes")
