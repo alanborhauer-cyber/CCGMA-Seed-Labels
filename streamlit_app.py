@@ -1061,15 +1061,15 @@ def generate_labels_pdf(label_data: list,
             body_w = LABEL_W - PAD_L - PAD_R
 
             # --- ADD BORDER HERE ---
-            canvas.saveState()             # Saves current canvas settings
-            canvas.setStrokeColorRGB(0, 0, 0) # Sets border color to Black
-            canvas.setLineWidth(1)         # Sets border thickness (1 point)
+            frame.saveState()             # Saves current canvas settings
+            frame.setStrokeColorRGB(0, 0, 0) # Sets border color to Black
+            frame.setLineWidth(1)         # Sets border thickness (1 point)
             
             # Draw the rectangle around the entire label
             # (Note: This assumes LABEL_H is defined globally like LABEL_W)
-            canvas.rect(lx, ly, LABEL_W, LABEL_H, stroke=1, fill=0) 
+            frame.rect(lx, ly, LABEL_W, LABEL_H, stroke=1, fill=0) 
             
-            canvas.restoreState()          # Restores canvas settings so it doesn't affect other elements
+            frame.restoreState()          # Restores canvas settings so it doesn't affect other elements
 
             if is_bg:
                 # -- Background Info label -- clean, no dividers, full width --
