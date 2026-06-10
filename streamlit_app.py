@@ -1045,7 +1045,7 @@ def generate_labels_pdf(label_data: list,
         for slot, (row, is_bg) in enumerate(page_labels):
             col_num = slot % COLS
             row_num = slot // COLS
-            if col == 0:
+            if col_num == 0:
                 x = LEFT_X
             else:
                 x = RIGHT_X
