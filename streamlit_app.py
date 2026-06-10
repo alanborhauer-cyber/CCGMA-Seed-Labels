@@ -23,8 +23,8 @@ import streamlit as st
 st.set_page_config(
     page_title="CCMGA Seed Library",
     page_icon="🌹",
-    layout="wide",
-    initial_sidebar_state="expanded",
+    layout="centered",
+    initial_sidebar_state="collapsed",
 )
 
 # -------------------------------------------------------------
@@ -72,9 +72,7 @@ def _auth_login(col):
     email    = st.text_input("Email", key="login_email")
     password = st.text_input("Password", type="password", key="login_pw")
 
-    c1, c2 = st.columns(2)
-    with c1:
-        if st.button("Log In", use_container_width=True, type="primary"):
+    if st.button("Log In", use_container_width=True, type="primary"):
             if not email or not password:
                 st.error("Please enter email and password.")
             else:
@@ -99,10 +97,9 @@ def _auth_login(col):
                     st.session_state.pop("current_page", None)
                     st.session_state.pop("_prev_selected", None)
                     st.rerun()
-    with c2:
-        if st.button("Register", use_container_width=True):
-            st.session_state.auth_step = "register"
-            st.rerun()
+    if st.button("Register", use_container_width=True):
+        st.session_state.auth_step = "register"
+        st.rerun()
 
 
 def _auth_register(col):
@@ -112,9 +109,7 @@ def _auth_register(col):
     password = st.text_input("Password",             key="reg_pw",   type="password")
     confirm  = st.text_input("Confirm Password",     key="reg_pw2",  type="password")
 
-    c1, c2 = st.columns(2)
-    with c1:
-        if st.button("Sign Up", use_container_width=True, type="primary"):
+    if st.button("Sign Up", use_container_width=True, type="primary"):
             if not all([name, email, password, confirm]):
                 st.error("All fields are required.")
             elif password != confirm:
@@ -139,10 +134,9 @@ def _auth_register(col):
                     st.rerun()
                 else:
                     st.error(f"Registration error: {result}")
-    with c2:
-        if st.button("Back to Login", use_container_width=True):
-            st.session_state.auth_step = "login"
-            st.rerun()
+    if st.button("Back to Login", use_container_width=True):
+        st.session_state.auth_step = "login"
+        st.rerun()
 
 
 def _auth_verify(col):
@@ -191,9 +185,11 @@ def _auth_verify(col):
 # -------------------------------------------------------------
 st.markdown("""
 <style>
-    /* Sidebar */
+    /* ── Mobile-first responsive layout ── */
+
+    /* Sidebar -- green on all devices */
     [data-testid="stSidebar"] {
-        background-color: #1b5e20;
+        background-color: #1b5e20 !important;
     }
     [data-testid="stSidebar"] * {
         color: white !important;
@@ -201,38 +197,122 @@ st.markdown("""
     [data-testid="stSidebar"] .stRadio label {
         color: white !important;
         font-weight: bold;
-        font-size: 1.05rem;
+        font-size: 1.1rem;
+        padding: 6px 0;
     }
-    /* Page title */
+    /* Sidebar toggle button -- make it visible and easy to tap */
+    [data-testid="stSidebarCollapsedControl"] {
+        background-color: #1b5e20 !important;
+        border-radius: 0 8px 8px 0 !important;
+    }
+    [data-testid="stSidebarCollapsedControl"] svg {
+        color: white !important;
+        fill: white !important;
+    }
+
+    /* Page title header */
     .ccmga-title {
         background-color: #1b5e20;
         color: white;
-        padding: 16px 24px;
+        padding: 14px 16px;
         border-radius: 8px;
-        margin-bottom: 18px;
+        margin-bottom: 16px;
         text-align: center;
     }
-    .ccmga-title h1 { color: white; margin: 0; font-size: 1.6rem; }
-    .ccmga-title p  { color: #c8e6c9; margin: 4px 0 0 0; font-size: 0.95rem; }
-    /* Blue action buttons */
-    .stButton > button {
-        background-color: #0076DB;
+    .ccmga-title h1 {
         color: white;
-        border: none;
-        border-radius: 6px;
-        font-weight: bold;
-        padding: 8px 20px;
+        margin: 0;
+        font-size: clamp(1.1rem, 4vw, 1.6rem);
+        line-height: 1.3;
+    }
+    .ccmga-title p {
+        color: #c8e6c9;
+        margin: 4px 0 0 0;
+        font-size: clamp(0.8rem, 3vw, 0.95rem);
+    }
+
+    /* Blue action buttons -- larger touch targets on mobile */
+    .stButton > button {
+        background-color: #0076DB !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 8px !important;
+        font-weight: bold !important;
+        padding: 10px 16px !important;
+        min-height: 44px !important;
+        font-size: clamp(0.85rem, 3vw, 1rem) !important;
+        width: 100% !important;
     }
     .stButton > button:hover {
-        background-color: #005aaa;
-        color: white;
+        background-color: #005aaa !important;
     }
-    /* Dataframe table */
-    .stDataFrame { border: 1px solid #ddd; border-radius: 6px; }
-    /* Field labels */
-    .field-label { font-weight: bold; color: #1b5e20; }
-    /* Success / error boxes */
+    .stButton > button:active {
+        background-color: #004080 !important;
+    }
+
+    /* Form inputs -- larger on mobile */
+    .stTextInput input,
+    .stNumberInput input,
+    .stSelectbox select {
+        min-height: 44px !important;
+        font-size: 1rem !important;
+    }
+    .stTextArea textarea {
+        font-size: 1rem !important;
+    }
+
+    /* Dataframe -- scrollable on mobile */
+    .stDataFrame {
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Alert boxes */
     .stAlert { border-radius: 6px; }
+
+    /* Main container -- full width on mobile */
+    .block-container {
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+        max-width: 100% !important;
+    }
+
+    /* Checkbox -- larger tap target */
+    .stCheckbox > label {
+        min-height: 36px !important;
+        align-items: center !important;
+        display: flex !important;
+    }
+
+    /* Download button */
+    .stDownloadButton > button {
+        background-color: #2e7d32 !important;
+        color: white !important;
+        border-radius: 8px !important;
+        font-weight: bold !important;
+        min-height: 44px !important;
+        width: 100% !important;
+    }
+
+    /* Radio buttons in nav */
+    .stRadio > div {
+        gap: 8px !important;
+    }
+
+    /* On small screens collapse multi-column forms to single column */
+    @media (max-width: 640px) {
+        .row-widget.stHorizontal {
+            flex-wrap: wrap !important;
+        }
+        .row-widget.stHorizontal > div {
+            flex: 1 1 100% !important;
+            min-width: 100% !important;
+        }
+        .ccmga-title h1 { font-size: 1.2rem !important; }
+        .stButton > button { font-size: 1rem !important; }
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -909,10 +989,9 @@ def generate_labels_pdf(label_data: list,
 
     PAGE_W, PAGE_H  = letter
     MARGIN_TOP      = 0.50 * inch
-    MARGIN_LEFT     = 0.1875 * inch
-    MARGIN_RIGHT    = 0.1875 * inch
-    GUTTER_W = 0.125 * inch
-    LABEL_W = (PAGE_W - MARGIN_LEFT - MARGIN_RIGHT - GUTTER_W) / 2
+    MARGIN_LEFT     = 0.16 * inch
+    MARGIN_RIGHT    = 0.16 * inch
+    LABEL_W         = (PAGE_W - MARGIN_LEFT - MARGIN_RIGHT) / 2
     LABEL_H         = 2.00  * inch
     COLS, ROWS      = 2, 5
     PER_PAGE        = COLS * ROWS
@@ -1192,14 +1271,12 @@ def page_browse():
     page_header("Browse Seeds", "Search, sort, view details, and edit records")
 
     # Search bar
-    col_s, col_b1, col_b2 = st.columns([4, 1, 1])
-    with col_s:
-        term = st.text_input("Search", placeholder="Family, variety, or file number...",
-                             label_visibility="collapsed",
-                             key="browse_search")
-    with col_b1:
+    term = st.text_input("Search", placeholder="Family, variety, or file number...",
+                         key="browse_search")
+    c_s1, c_s2 = st.columns(2)
+    with c_s1:
         search_clicked = st.button("Search", use_container_width=True)
-    with col_b2:
+    with c_s2:
         show_all = st.button("Show All", use_container_width=True)
     if show_all:
         st.session_state.browse_term = ""
@@ -1265,13 +1342,30 @@ def page_browse():
     chosen_row = next((r for r in rows if r["FileNumber"] == chosen_fn), None)
 
     if chosen_row:
-        action = st.radio(
-            "Action",
-            ["View", "Edit", "Duplicate as New Record"],
-            horizontal=True,
-            key="browse_action",
-        )
+        # Nav-style action buttons
+        if "browse_action" not in st.session_state:
+            st.session_state.browse_action = "View"
+        ba1, ba2, ba3 = st.columns(3)
+        with ba1:
+            if st.button("View",
+                         use_container_width=True,
+                         type="primary" if st.session_state.browse_action == "View" else "secondary"):
+                st.session_state.browse_action = "View"
+                st.rerun()
+        with ba2:
+            if st.button("Edit",
+                         use_container_width=True,
+                         type="primary" if st.session_state.browse_action == "Edit" else "secondary"):
+                st.session_state.browse_action = "Edit"
+                st.rerun()
+        with ba3:
+            if st.button("Duplicate",
+                         use_container_width=True,
+                         type="primary" if st.session_state.browse_action == "Duplicate as New Record" else "secondary"):
+                st.session_state.browse_action = "Duplicate as New Record"
+                st.rerun()
         st.markdown("---")
+        action = st.session_state.browse_action
         if action == "View":
             _browse_detail(chosen_row)
         elif action == "Edit":
@@ -1281,38 +1375,49 @@ def page_browse():
 
 
 def _browse_detail(row: dict):
-    """Read-only detail view."""
-    col1, col2 = st.columns(2)
-    left_fields  = ["Family", "Variety", "Comments", "SeedSource",
-                    "GrownBy", "WhereGrown"]
+    """Read-only detail view -- Comments and Background Info side by side."""
+    # Top: seed identity + quick facts
+    id_fields    = ["Family", "Variety", "SeedSource", "GrownBy", "WhereGrown"]
     right_fields = ["FileNumber", "Year", "Season", "NumSeeds", "Edible",
                     "PerennialAnnual", "SeedSaverLevel",
                     "SoilTemperature", "Germination", "HybridDoNotSave"]
+
+    col1 = st.container()
+    col2 = st.container()
     with col1:
-        for f in left_fields:
-            val = row.get(f, "") or "--"
-            # Flag comments over 300 chars
-            if f == "Comments" and len(val) > 300:
-                st.markdown(f"**{FIELD_LABELS[f]}:** {val}")
-                st.warning(f"⚠️ Comments are {len(val)} characters "
-                           f"({len(val)-300} over the 300-char label limit). "
-                           "Only the first 300 characters will print on the label.")
-            else:
-                st.markdown(f"**{FIELD_LABELS[f]}:** {val}")
+        for f in id_fields:
+            st.markdown(f"**{FIELD_LABELS[f]}:** {row.get(f,'') or '--'}")
     with col2:
         for f in right_fields:
             st.markdown(f"**{FIELD_LABELS[f]}:** {row.get(f,'') or '--'}")
 
-    # Background Info -- always shown in full with its own section
-    bg = str(row.get("BackgroundInfo") or "").strip()
-    if bg:
+    # Comments and Background Info side by side (or stacked on mobile)
+    comments = str(row.get("Comments") or "").strip()
+    bg       = str(row.get("BackgroundInfo") or "").strip()
+
+    if comments or bg:
         st.markdown("---")
-        st.markdown("**Background Information**")
-        st.markdown(bg)
-        if len(bg) > 300:
-            st.warning(f"⚠️ Background Info is {len(bg)} characters "
-                       f"({len(bg)-300} over the 300-char label limit). "
-                       "Only the first 300 characters will print on the label.")
+        if comments and bg:
+            cc, bc = st.columns(2)
+        else:
+            cc = bc = st.container()
+
+        if comments:
+            with cc:
+                st.markdown("**Comments**")
+                st.info(comments)
+                if len(comments) > 300:
+                    st.warning(
+                        f"⚠️ {len(comments)} chars "
+                        f"({len(comments)-300} over 300-char label limit)")
+        if bg:
+            with bc:
+                st.markdown("**Background Information**")
+                st.info(bg)
+                if len(bg) > 300:
+                    st.warning(
+                        f"⚠️ {len(bg)} chars "
+                        f"({len(bg)-300} over 300-char label limit)")
 
 
 def _browse_edit_form(row: dict, is_duplicate: bool = False):
@@ -1320,7 +1425,8 @@ def _browse_edit_form(row: dict, is_duplicate: bool = False):
     fn = row["FileNumber"]
     st.markdown(f"**Editing File #{fn}**")
     with st.form(key=f"edit_form_{fn}_{is_duplicate}"):
-        c1, c2 = st.columns(2)
+        c1 = st.container()
+        c2 = st.container()
         with c1:
             family  = st.text_input("Family",       value=row.get("Family",""))
             variety = st.text_input("Variety",       value=row.get("Variety",""))
@@ -1374,7 +1480,8 @@ def _browse_duplicate_form(source_row: dict):
             f"{source_row['Variety']}** as new record **#{next_fn}**. "
             "Edit any fields then save.")
     with st.form(key=f"dup_form_{source_row['FileNumber']}"):
-        c1, c2 = st.columns(2)
+        c1 = st.container()
+        c2 = st.container()
         with c1:
             fn      = st.number_input("File Number *", value=next_fn,
                                       min_value=1, step=1)
@@ -1446,7 +1553,8 @@ def page_add():
     st.info(f"Next available File Number: **{next_fn}**")
 
     with st.form("add_form", clear_on_submit=True):
-        c1, c2 = st.columns(2)
+        c1 = st.container()
+        c2 = st.container()
         with c1:
             fn      = st.number_input("File Number *", value=next_fn,
                                       min_value=1, step=1)
@@ -1509,14 +1617,13 @@ def page_add():
 def page_remove():
     page_header("Remove Seeds", "Search for and permanently delete seed records")
 
-    col_s, col_b1, col_b2 = st.columns([4, 1, 1])
-    with col_s:
-        term = st.text_input("Search", placeholder="Family, variety, or file number...",
-                             label_visibility="collapsed", key="remove_search")
-    with col_b1:
+    term = st.text_input("Search", placeholder="Family, variety, or file number...",
+                         key="remove_search")
+    c_r1, c_r2 = st.columns(2)
+    with c_r1:
         if st.button("Search", use_container_width=True):
             st.session_state.remove_term = term
-    with col_b2:
+    with c_r2:
         if st.button("Show All", use_container_width=True):
             st.session_state.remove_term = ""
 
@@ -1584,15 +1691,14 @@ def page_labels():
                 "Avery 94207 -- 2 inch x 4 inch labels, 10 per sheet (2 cols x 5 rows)")
 
     # Search bar
-    col_s, col_b1, col_b2 = st.columns([4, 1, 1])
-    with col_s:
-        term = st.text_input("Search", placeholder="Family, variety, or file number...",
-                             label_visibility="collapsed", key="label_search")
-    with col_b1:
+    term = st.text_input("Search", placeholder="Family, variety, or file number...",
+                         key="label_search")
+    c_l1, c_l2 = st.columns(2)
+    with c_l1:
         if st.button("Search", use_container_width=True, key="lbl_search_btn"):
             st.session_state.label_term = term
             st.rerun()
-    with col_b2:
+    with c_l2:
         if st.button("Load All", use_container_width=True):
             st.session_state.label_term = ""
             st.rerun()
@@ -1614,33 +1720,39 @@ def page_labels():
 
     st.caption(f"{len(rows)} seed(s) loaded. Set Qty >= 1 to include in print job.")
 
-    include_bg = st.checkbox(
-        "Also print Background Info as a separate label (only for seeds that have it)",
-        key="label_include_bg",
-    )
+    # Nav-style Background Info toggle button
+    if "label_include_bg" not in st.session_state:
+        st.session_state.label_include_bg = False
+    bg_active = st.session_state.label_include_bg
+    bg_label   = "Background Info Labels: ON" if bg_active else "Background Info Labels: OFF"
+    if st.button(bg_label,
+                 use_container_width=True,
+                 type="primary" if bg_active else "secondary"):
+        st.session_state.label_include_bg = not bg_active
+        st.rerun()
+    include_bg = st.session_state.label_include_bg
 
     # Per-seed rows: checkbox + qty number input
     st.markdown("**Select seeds and quantities:**")
-    hdr = st.columns([1, 4, 4, 2, 2])
-    hdr[0].markdown("**Print**")
-    hdr[1].markdown("**Family**")
-    hdr[2].markdown("**Variety**")
-    hdr[3].markdown("**Season**")
-    hdr[4].markdown("**Qty**")
+    hdr = st.columns([1, 7, 2])
+    hdr[0].markdown("**Sel**")
+    hdr[1].markdown("**Family / Variety**")
+    hdr[2].markdown("**Qty**")
     st.divider()
 
     for r in rows:
         fn      = int(r["FileNumber"])
         cur_qty = st.session_state.label_qtys.get(fn, 0)
-        cols    = st.columns([1, 4, 4, 2, 2])
+        cols    = st.columns([1, 7, 2])
         checked = cols[0].checkbox(
             "", value=cur_qty > 0,
             key=f"lbl_chk_{fn}",
             label_visibility="collapsed")
-        cols[1].write(sf(r, "Family"))
-        cols[2].write(sf(r, "Variety"))
-        cols[3].write(sf(r, "Season"))
-        new_qty = cols[4].number_input(
+        cols[1].markdown(
+            f"**{sf(r,'Family')}**  \n{sf(r,'Variety')}  "
+            f"<span style='color:#888;font-size:0.8em'>{sf(r,'Season')}</span>",
+            unsafe_allow_html=True)
+        new_qty = cols[2].number_input(
             "", min_value=0, max_value=99,
             value=max(cur_qty, 1 if checked else 0),
             step=1, key=f"lbl_qty_{fn}",
@@ -1838,7 +1950,7 @@ def sidebar_nav():
 
         st.markdown(
             "<small>Cochise County Master Gardener Association<br/>"
-            "v3.0 6.9.2026 Alan Borhauer</small>",
+            "v2.0 6.8.2026 Alan Borhauer</small>",
             unsafe_allow_html=True,
         )
         st.markdown("---")
