@@ -1005,7 +1005,7 @@ def generate_labels_pdf(label_data: list,
     COLS, ROWS      = 2, 5
     PER_PAGE        = COLS * ROWS
 
-    PAD_L, PAD_R, PAD_T, PAD_B = 5, 5, 5, 5
+    PAD_L, PAD_R, PAD_T, PAD_B = 6, 4, 4, 3
     TITLE_H         = 28
     LEFT_FRAC       = 2 / 3
 
@@ -1128,7 +1128,7 @@ def generate_labels_pdf(label_data: list,
                     alignment=TA_LEFT, leading=9)))
                 if comment: left_items.append(Paragraph(comment, cmt_sty))
                 Frame(body_x, body_y, left_w - 4, body_h,
-                      leftPadding=10, rightPadding=0,
+                      leftPadding=7, rightPadding=0,
                       topPadding=0, bottomPadding=0, showBoundary=1
                       ).addFromList(left_items, c)
 
