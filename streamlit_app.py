@@ -987,16 +987,29 @@ def generate_labels_pdf(label_data: list,
     if not labels:
         return None
 
-    PAGE_W, PAGE_H  = letter
-    MARGIN_TOP      = 0.50 * inch
-    MARGIN_LEFT     = 0.25 * inch
-    MARGIN_RIGHT    = 0.25 * inch
-    LABEL_W         = (PAGE_W - MARGIN_LEFT - MARGIN_RIGHT) / 2
-    LABEL_H         = 2.00  * inch
-    COLS, ROWS      = 2, 5
-    PER_PAGE        = COLS * ROWS
+    PAGE_W, PAGE_H = letter
 
-    PAD_L, PAD_R, PAD_T, PAD_B = 6, 6, 4, 3
+    MARGIN_LEFT  = 0.25 * inch
+    MARGIN_RIGHT = 0.25 * inch
+    MARGIN_TOP   = 0.50 * inch
+
+    LABEL_W      = 4.00 * inch
+    LABEL_H      = 2.00 * inch
+
+    GUTTER       = 0.125 * inch
+
+    COLS = 2
+    ROWS = 5
+    PER_PAGE = COLS * ROWS
+
+    LEFT_X  = 0.25 * inch
+    RIGHT_X = 4.375 * inch 
+
+    PAD_L = 5
+    PAD_R = 5
+    PAD_T = 5
+    PAD_B = 5
+    
     TITLE_H         = 28
     LEFT_FRAC       = 2 / 3
 
