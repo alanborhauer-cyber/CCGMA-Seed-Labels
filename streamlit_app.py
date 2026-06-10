@@ -1145,8 +1145,8 @@ def generate_labels_pdf(label_data: list,
                 if germ_text:
                     right_items.append(Paragraph(f"Germ: {germ_text}", grm_sty))
                 Frame(vdiv_x + 3, body_y, right_w - 4, body_h,
-                      leftPadding=5, rightPadding=0,
-                      topPadding=0, bottomPadding=0, showBoundary=0
+                      leftPadding=0, rightPadding=0,
+                      topPadding=0, bottomPadding=0, showBoundary=1
                       ).addFromList(right_items, c)
 
         c.showPage()
