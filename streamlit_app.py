@@ -1129,7 +1129,7 @@ def generate_labels_pdf(label_data: list,
                 if comment: left_items.append(Paragraph(comment, cmt_sty))
                 Frame(body_x, body_y, left_w - 4, body_h,
                       leftPadding=0, rightPadding=0,
-                      topPadding=0, bottomPadding=0, showBoundary=0
+                      topPadding=0, bottomPadding=0, showBoundary=1
                       ).addFromList(left_items, c)
 
                 # Right cell
