@@ -1083,13 +1083,13 @@ def generate_labels_pdf(label_data: list,
                     textColor=colors.black, alignment=TA_LEFT,
                     leading=12, spaceAfter=0)
 
-            all_bg = [
-                Paragraph(f"{family} ({variety})", bg_title_sty),
-                Paragraph("Background Information", bg_title_sty),
-                Paragraph(bg_info, bg_body_sty),
+                all_bg = [
+                    Paragraph(f"{family} ({variety})", bg_title_sty),
+                    Paragraph("Background Information", bg_title_sty),
+                    Paragraph(bg_info, bg_body_sty),
                 ]
             
-            Frame(lx + BG_PAD, ly + BG_PAD, full_w, full_h,
+                Frame(lx + BG_PAD, ly + BG_PAD, full_w, full_h,
                       leftPadding=0, rightPadding=0,
                       topPadding=0, bottomPadding=0,
                       showBoundary=0).addFromList(all_bg, c)
