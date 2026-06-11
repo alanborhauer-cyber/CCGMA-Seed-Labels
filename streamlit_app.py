@@ -1087,7 +1087,8 @@ def generate_labels_pdf(label_data: list,
                 Paragraph(f"{family} ({variety})", bg_title_sty),
                 Paragraph("Background Information", bg_title_sty),
                 Paragraph(bg_info, bg_body_sty),
-            ]
+                ]
+            
                 Frame(lx + BG_PAD, ly + BG_PAD, full_w, full_h,
                       leftPadding=0, rightPadding=0,
                       topPadding=0, bottomPadding=0,
