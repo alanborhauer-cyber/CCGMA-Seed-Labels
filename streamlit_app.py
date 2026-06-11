@@ -1104,7 +1104,7 @@ def generate_labels_pdf(label_data: list,
 
                 # Header
                 Frame(tx, ty, tw, TITLE_H_USE, leftPadding=0, rightPadding=0,
-                      topPadding=0, bottomPadding=0, showBoundary=0).addFromList(
+                      topPadding=0, bottomPadding=0, showBoundary=1).addFromList(
                     [Paragraph("Cochise County Master Gardener Association"
                                "<br/>Seed Library", title_sty)], c)
 
