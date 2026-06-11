@@ -1241,7 +1241,7 @@ def page_home():
 |---|---|
 | **Built for** | Cochise County Master Gardener Association |
 | **Labels** | For use with Avery 94207 Labels (2" x 4", 10 per sheet) |
-| **Version** | 2.1 6.8.2026 |
+| **Version** | 2.7 6.10.2026 |
     """)
 
     # -- Seeds with comments or background info over 300 chars -------
@@ -1961,7 +1961,7 @@ def sidebar_nav():
 
         st.markdown(
             "<small>Cochise County Master Gardener Association<br/>"
-            "v2.0 6.8.2026 Alan Borhauer</small>",
+            "v2.7 6.10.2026 Alan Borhauer</small>",
             unsafe_allow_html=True,
         )
         st.markdown("---")
