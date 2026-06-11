@@ -1001,7 +1001,7 @@ def generate_labels_pdf(label_data: list,
     LABEL_H         = 2.00 * inch
     GUTTER          = 0.1875 * inch
     LEFT_X          = 0.125 * inch         # left edge of col 0
-    RIGHT_X         = LEFT_X + LABEL_W + GUTTER - 0.25     # 0.125 + 4.00 + 0.1875
+    RIGHT_X         = MARGIN_LEFT + LEFT_X + LABEL_W + GUTTER     # 0.125 + 4.00 + 0.1875
     COLS, ROWS      = 2, 5
     PER_PAGE        = COLS * ROWS
 
