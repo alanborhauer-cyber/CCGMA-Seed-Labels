@@ -1089,7 +1089,7 @@ def generate_labels_pdf(label_data: list,
                 Paragraph(bg_info, bg_body_sty),
                 ]
             
-                Frame(lx + BG_PAD, ly + BG_PAD, full_w, full_h,
+            Frame(lx + BG_PAD, ly + BG_PAD, full_w, full_h,
                       leftPadding=0, rightPadding=0,
                       topPadding=0, bottomPadding=0,
                       showBoundary=0).addFromList(all_bg, c)
