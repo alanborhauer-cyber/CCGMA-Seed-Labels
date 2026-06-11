@@ -994,19 +994,19 @@ def generate_labels_pdf(label_data: list,
 
     # Avery 94207 exact dimensions
     PAGE_W, PAGE_H  = letter              # 8.5 x 11 inches
-    MARGIN_TOP      = 0.25 * inch
+    MARGIN_TOP      = 0.5 * inch
     MARGIN_LEFT     = 0.125 * inch
     MARGIN_RIGHT    = 0.125 * inch
     LABEL_W         = 4.00 * inch         # hard-coded, not calculated
     LABEL_H         = 2.00 * inch
     GUTTER          = 0.1875 * inch
     LEFT_X          = 0.125 * inch         # left edge of col 0
-    RIGHT_X         = 4.5 * inch        # 0.125 + 4.00 + 0.1875
+    RIGHT_X         = left_x + label_w + gutter      # 0.125 + 4.00 + 0.1875
     COLS, ROWS      = 2, 5
     PER_PAGE        = COLS * ROWS
 
     PAD_L, PAD_R, PAD_T, PAD_B = 6, 4, 4, 3
-    TITLE_H         = 28
+    TITLE_H         = 26
     LEFT_FRAC       = 2 / 3
 
     BORDER  = colors.HexColor("#000000")
@@ -1083,15 +1083,15 @@ def generate_labels_pdf(label_data: list,
                     textColor=colors.black, alignment=TA_LEFT,
                     leading=12, spaceAfter=0)
 
-                all_bg = [
-                    Paragraph(f"{family}", bg_title_sty),
-                    Paragraph(f"{variety} -- Background Information", bg_title_sty),
+               all_bg = [
+                    Paragraph(f"{family} ({variety})", bg_title_sty),
+                    Paragraph("Background Information", bg_title_sty),
                     Paragraph(bg_info, bg_body_sty),
-                ]
+                    ]
                 Frame(lx + BG_PAD, ly + BG_PAD, full_w, full_h,
                       leftPadding=0, rightPadding=0,
                       topPadding=0, bottomPadding=0,
-                      showBoundary=1).addFromList(all_bg, c)
+                      showBoundary=0).addFromList(all_bg, c)
 
             else:
                 # -- Standard seed label ----------------------------
@@ -1104,7 +1104,7 @@ def generate_labels_pdf(label_data: list,
 
                 # Header
                 Frame(tx, ty, tw, TITLE_H_USE, leftPadding=0, rightPadding=0,
-                      topPadding=0, bottomPadding=0, showBoundary=1).addFromList(
+                      topPadding=0, bottomPadding=0, showBoundary=0).addFromList(
                     [Paragraph("Cochise County Master Gardener Association"
                                "<br/>Seed Library", title_sty)], c)
 
@@ -1129,7 +1129,7 @@ def generate_labels_pdf(label_data: list,
                 if comment: left_items.append(Paragraph(comment, cmt_sty))
                 Frame(body_x, body_y, left_w - 4, body_h,
                       leftPadding=7, rightPadding=0,
-                      topPadding=0, bottomPadding=0, showBoundary=1
+                      topPadding=0, bottomPadding=0, showBoundary=0
                       ).addFromList(left_items, c)
 
                 # Right cell
@@ -1146,7 +1146,7 @@ def generate_labels_pdf(label_data: list,
                     right_items.append(Paragraph(f"Germ: {germ_text}", grm_sty))
                 Frame(vdiv_x + 3, body_y, right_w - 4, body_h,
                       leftPadding=0, rightPadding=0,
-                      topPadding=0, bottomPadding=0, showBoundary=1
+                      topPadding=0, bottomPadding=0, showBoundary=0
                       ).addFromList(right_items, c)
 
         c.showPage()
