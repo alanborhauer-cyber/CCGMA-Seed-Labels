@@ -24,7 +24,7 @@ st.set_page_config(
     page_title="CCMGA Seed Library",
     page_icon = "seedapp_icon_1.png",
     layout="centered",
-    initial_sidebar_state="wide",
+    initial_sidebar_state="auto",
 )
 
 # -------------------------------------------------------------
