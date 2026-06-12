@@ -22,7 +22,7 @@ import streamlit as st
 # -------------------------------------------------------------
 st.set_page_config(
     page_title="CCMGA Seed Library",
-    page_icon = "🌵",
+    page_icon = "seedapp_icon_1.png",
     layout="centered",
     initial_sidebar_state="collapsed",
 )
@@ -51,7 +51,7 @@ def check_password():
         st.markdown("""
         <div style="background:#1b5e20;padding:24px 32px;border-radius:12px;
                     text-align:center;margin-bottom:16px;">
-          <h2 style="color:white;margin:0;">🌵 CCMGA Seed Library</h2>
+          <h2 style="color:white;margin:0;"> CCMGA Seed Library</h2>
           <p style="color:#c8e6c9;margin:4px 0 0 0;">
             Cochise County Master Gardener Association</p>
         </div>""", unsafe_allow_html=True)
