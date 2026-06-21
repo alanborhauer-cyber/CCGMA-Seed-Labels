@@ -1100,7 +1100,9 @@ def generate_labels_pdf(label_data: list,
                       topPadding=0, bottomPadding=0,
                       showBoundary=0)
                 c.saveState()
-                c.clipRect(lx + BG_PAD, ly + BG_PAD, full_w, full_h, stroke=0, fill=0)
+                _clip = c.beginPath()
+                _clip.rect(lx + BG_PAD, ly + BG_PAD, full_w, full_h)
+                c.clipPath(_clip, stroke=0, fill=0)
                 bg_frame.addFromList(all_bg, c)
                 c.restoreState()
 
@@ -1117,7 +1119,9 @@ def generate_labels_pdf(label_data: list,
                 title_frame = Frame(tx, ty, tw, TITLE_H_USE, leftPadding=0, rightPadding=0,
                       topPadding=0, bottomPadding=0, showBoundary=0)
                 c.saveState()
-                c.clipRect(tx, ty, tw, TITLE_H_USE, stroke=0, fill=0)
+                _clip = c.beginPath()
+                _clip.rect(tx, ty, tw, TITLE_H_USE)
+                c.clipPath(_clip, stroke=0, fill=0)
                 title_frame.addFromList(
                     [Paragraph("Cochise County Master Gardener Association"
                                "<br/>Seed Library", title_sty)], c)
@@ -1146,7 +1150,9 @@ def generate_labels_pdf(label_data: list,
                       leftPadding=0, rightPadding=0,
                       topPadding=0, bottomPadding=0, showBoundary=0)
                 c.saveState()
-                c.clipRect(body_x, body_y, left_w - 4, body_h, stroke=0, fill=0)
+                _clip = c.beginPath()
+                _clip.rect(body_x, body_y, left_w - 4, body_h)
+                c.clipPath(_clip, stroke=0, fill=0)
                 left_frame.addFromList(left_items, c)
                 c.restoreState()
 
@@ -1166,7 +1172,9 @@ def generate_labels_pdf(label_data: list,
                       leftPadding=0, rightPadding=0,
                       topPadding=0, bottomPadding=0, showBoundary=0)
                 c.saveState()
-                c.clipRect(vdiv_x + 3, body_y, right_w - 4, body_h, stroke=0, fill=0)
+                _clip = c.beginPath()
+                _clip.rect(vdiv_x + 3, body_y, right_w - 4, body_h)
+                c.clipPath(_clip, stroke=0, fill=0)
                 right_frame.addFromList(right_items, c)
                 c.restoreState()
 
