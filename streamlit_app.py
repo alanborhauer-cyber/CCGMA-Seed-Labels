@@ -1095,16 +1095,10 @@ def generate_labels_pdf(label_data: list,
                     Paragraph(f"{variety} -- Background Information", bg_title_sty),
                     Paragraph(bg_info, bg_body_sty),
                 ]
-                bg_frame = Frame(lx + BG_PAD, ly + BG_PAD, full_w, full_h,
+                Frame(lx + BG_PAD, ly + BG_PAD, full_w, full_h,
                       leftPadding=0, rightPadding=0,
                       topPadding=0, bottomPadding=0,
-                      showBoundary=0)
-                c.saveState()
-                _clip = c.beginPath()
-                _clip.rect(lx + BG_PAD, ly + BG_PAD, full_w, full_h)
-                c.clipPath(_clip, stroke=0, fill=0)
-                bg_frame.addFromList(all_bg, c)
-                c.restoreState()
+                      showBoundary=0).addFromList(all_bg, c)
 
             else:
                 # -- Standard seed label ----------------------------
@@ -1116,16 +1110,10 @@ def generate_labels_pdf(label_data: list,
                 vdiv_x = body_x + left_w + 2
 
                 # Header
-                title_frame = Frame(tx, ty, tw, TITLE_H_USE, leftPadding=0, rightPadding=0,
-                      topPadding=0, bottomPadding=0, showBoundary=0)
-                c.saveState()
-                _clip = c.beginPath()
-                _clip.rect(tx, ty, tw, TITLE_H_USE)
-                c.clipPath(_clip, stroke=0, fill=0)
-                title_frame.addFromList(
+                Frame(tx, ty, tw, TITLE_H_USE, leftPadding=0, rightPadding=0,
+                      topPadding=0, bottomPadding=0, showBoundary=0).addFromList(
                     [Paragraph("Cochise County Master Gardener Association"
                                "<br/>Seed Library", title_sty)], c)
-                c.restoreState()
 
                 # Thin horizontal divider under header
                 div_y = ly + LABEL_H - PAD_T - TITLE_H_USE - 1
@@ -1146,15 +1134,10 @@ def generate_labels_pdf(label_data: list,
                     textColor=colors.HexColor("#b71c1c"),
                     alignment=TA_LEFT, leading=9)))
                 if comment: left_items.append(Paragraph(comment, cmt_sty))
-                left_frame = Frame(body_x, body_y, left_w - 4, body_h,
+                Frame(body_x, body_y, left_w - 4, body_h,
                       leftPadding=0, rightPadding=0,
-                      topPadding=0, bottomPadding=0, showBoundary=0)
-                c.saveState()
-                _clip = c.beginPath()
-                _clip.rect(body_x, body_y, left_w - 4, body_h)
-                c.clipPath(_clip, stroke=0, fill=0)
-                left_frame.addFromList(left_items, c)
-                c.restoreState()
+                      topPadding=0, bottomPadding=0, showBoundary=0
+                      ).addFromList(left_items, c)
 
                 # Right cell
                 right_items = []
@@ -1163,20 +1146,15 @@ def generate_labels_pdf(label_data: list,
                 if season:   right_items.append(Paragraph(season, rit_sty))
                 if numseeds: right_items.append(Paragraph(f"{numseeds} Seeds", rgt_sty))
                 if saver:    right_items.append(Paragraph(saver, svr_sty))
-                # Show germ and soil temp as separate clean lines
-                if germ:
-                    right_items.append(Paragraph(f"Germ: {germ}", grm_sty))
+                germ_text = germ
                 if soil_t:
-                    right_items.append(Paragraph(f"Soil: {soil_t}", grm_sty))
-                right_frame = Frame(vdiv_x + 3, body_y, right_w - 4, body_h,
+                    germ_text += f"\n@ {soil_t}" if germ else soil_t
+                if germ_text:
+                    right_items.append(Paragraph(f"Germ: {germ_text}", grm_sty))
+                Frame(vdiv_x + 3, body_y, right_w - 4, body_h,
                       leftPadding=0, rightPadding=0,
-                      topPadding=0, bottomPadding=0, showBoundary=0)
-                c.saveState()
-                _clip = c.beginPath()
-                _clip.rect(vdiv_x + 3, body_y, right_w - 4, body_h)
-                c.clipPath(_clip, stroke=0, fill=0)
-                right_frame.addFromList(right_items, c)
-                c.restoreState()
+                      topPadding=0, bottomPadding=0, showBoundary=0
+                      ).addFromList(right_items, c)
 
         c.showPage()
         page_idx += 1
