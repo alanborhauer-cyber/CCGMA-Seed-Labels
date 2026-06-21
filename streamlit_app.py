@@ -20,21 +20,9 @@ import streamlit as st
 # -------------------------------------------------------------
 # PAGE CONFIG (must be first Streamlit call)
 # -------------------------------------------------------------
-# Load custom icon
-try:
-    from PIL import Image as _PILImage
-    import os as _os
-    _icon_path = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "SaguaroFlower.png")
-    if _os.path.exists(_icon_path):
-        _page_icon = _PILImage.open(_icon_path)
-    else:
-        _page_icon = "🌵"
-except Exception:
-    _page_icon = "🌵"
-
 st.set_page_config(
     page_title="CCMGA Seed Library",
-    page_icon=_page_icon,
+    page_icon="🌹",
     layout="centered",
     initial_sidebar_state="collapsed",
 )
@@ -63,7 +51,7 @@ def check_password():
         st.markdown("""
         <div style="background:#1b5e20;padding:24px 32px;border-radius:12px;
                     text-align:center;margin-bottom:16px;">
-          <h2 style="color:white;margin:0;">🌵 CCMGA Seed Library</h2>
+          <h2 style="color:white;margin:0;">🌹 CCMGA Seed Library</h2>
           <p style="color:#c8e6c9;margin:4px 0 0 0;">
             Cochise County Master Gardener Association</p>
         </div>""", unsafe_allow_html=True)
@@ -1937,7 +1925,7 @@ def sidebar_nav():
     current_idx = st.session_state.get("_nav_index", 0)
 
     with st.sidebar:
-        st.markdown("## 🌵 CCMGA\n### Seed Library")
+        st.markdown("## 🌹 CCMGA\n### Seed Library")
         # Show logged-in user
         uname = st.session_state.get("user_name", "")
         urole = st.session_state.get("user_role", "user")
