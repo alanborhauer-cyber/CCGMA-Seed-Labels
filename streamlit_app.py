@@ -34,9 +34,9 @@ except Exception:
 
 st.set_page_config(
     page_title="CCMGA Seed Library",
-    page_icon = "seedapp_icon_1.png",
+    page_icon=_page_icon,
     layout="centered",
-    initial_sidebar_state="auto",
+    initial_sidebar_state="collapsed",
 )
 
 # -------------------------------------------------------------
@@ -63,8 +63,7 @@ def check_password():
         st.markdown("""
         <div style="background:#1b5e20;padding:24px 32px;border-radius:12px;
                     text-align:center;margin-bottom:16px;">
-          <img src="seedapp_icon_1.png" width="auto">
-          <h2 style="color:white;margin:0;"> CCMGA Seed Library</h2>
+          <h2 style="color:white;margin:0;">🌵 CCMGA Seed Library</h2>
           <p style="color:#c8e6c9;margin:4px 0 0 0;">
             Cochise County Master Gardener Association</p>
         </div>""", unsafe_allow_html=True)
@@ -970,11 +969,6 @@ Login to admin panel.
     except:
 
         pass
-
-# =============================================================
-# Label Making
-# =============================================================
-
 def generate_labels_pdf(label_data: list,
                         include_background: bool = False) -> bytes | None:
     """Returns PDF bytes or None on error.
@@ -1007,19 +1001,19 @@ def generate_labels_pdf(label_data: list,
 
     # Avery 94207 exact dimensions
     PAGE_W, PAGE_H  = letter              # 8.5 x 11 inches
-    MARGIN_TOP      = 0.5 * inch
-    MARGIN_LEFT     = 0.125 * inch
-    MARGIN_RIGHT    = 0.125 * inch
+    MARGIN_TOP      = 0.50 * inch
+    MARGIN_LEFT     = 0.25 * inch
+    MARGIN_RIGHT    = 0.25 * inch
     LABEL_W         = 4.00 * inch         # hard-coded, not calculated
     LABEL_H         = 2.00 * inch
-    GUTTER          = 0.1875 * inch
-    LEFT_X          = 0.125 * inch         # left edge of col 0
-    RIGHT_X         = MARGIN_LEFT + LEFT_X + LABEL_W + GUTTER     # 0.125 + 4.00 + 0.1875
+    GUTTER          = 0.125 * inch
+    LEFT_X          = 0.25 * inch         # left edge of col 0
+    RIGHT_X         = 4.375 * inch        # 0.25 + 4.00 + 0.125
     COLS, ROWS      = 2, 5
     PER_PAGE        = COLS * ROWS
 
-    PAD_L, PAD_R, PAD_T, PAD_B = 6, 4, 4, 3
-    TITLE_H         = 26
+    PAD_L, PAD_R, PAD_T, PAD_B = 5, 5, 5, 5
+    TITLE_H         = 28
     LEFT_FRAC       = 2 / 3
 
     BORDER  = colors.HexColor("#000000")
@@ -1097,15 +1091,18 @@ def generate_labels_pdf(label_data: list,
                     leading=12, spaceAfter=0)
 
                 all_bg = [
-                    Paragraph(f"{family} ({variety})", bg_title_sty),
-                    Paragraph("Background Information", bg_title_sty),
+                    Paragraph(f"{family}", bg_title_sty),
+                    Paragraph(f"{variety} -- Background Information", bg_title_sty),
                     Paragraph(bg_info, bg_body_sty),
                 ]
-            
-                Frame(lx + BG_PAD, ly + BG_PAD, full_w, full_h,
+                bg_frame = Frame(lx + BG_PAD, ly + BG_PAD, full_w, full_h,
                       leftPadding=0, rightPadding=0,
                       topPadding=0, bottomPadding=0,
-                      showBoundary=0).addFromList(all_bg, c)
+                      showBoundary=0)
+                c.saveState()
+                c.clipRect(lx + BG_PAD, ly + BG_PAD, full_w, full_h, stroke=0, fill=0)
+                bg_frame.addFromList(all_bg, c)
+                c.restoreState()
 
             else:
                 # -- Standard seed label ----------------------------
@@ -1117,10 +1114,14 @@ def generate_labels_pdf(label_data: list,
                 vdiv_x = body_x + left_w + 2
 
                 # Header
-                Frame(tx, ty, tw, TITLE_H_USE, leftPadding=0, rightPadding=0,
-                      topPadding=0, bottomPadding=0, showBoundary=0).addFromList(
+                title_frame = Frame(tx, ty, tw, TITLE_H_USE, leftPadding=0, rightPadding=0,
+                      topPadding=0, bottomPadding=0, showBoundary=0)
+                c.saveState()
+                c.clipRect(tx, ty, tw, TITLE_H_USE, stroke=0, fill=0)
+                title_frame.addFromList(
                     [Paragraph("Cochise County Master Gardener Association"
                                "<br/>Seed Library", title_sty)], c)
+                c.restoreState()
 
                 # Thin horizontal divider under header
                 div_y = ly + LABEL_H - PAD_T - TITLE_H_USE - 1
@@ -1141,10 +1142,13 @@ def generate_labels_pdf(label_data: list,
                     textColor=colors.HexColor("#b71c1c"),
                     alignment=TA_LEFT, leading=9)))
                 if comment: left_items.append(Paragraph(comment, cmt_sty))
-                Frame(body_x, body_y, left_w - 4, body_h,
-                      leftPadding=7, rightPadding=0,
-                      topPadding=0, bottomPadding=0, showBoundary=0
-                      ).addFromList(left_items, c)
+                left_frame = Frame(body_x, body_y, left_w - 4, body_h,
+                      leftPadding=0, rightPadding=0,
+                      topPadding=0, bottomPadding=0, showBoundary=0)
+                c.saveState()
+                c.clipRect(body_x, body_y, left_w - 4, body_h, stroke=0, fill=0)
+                left_frame.addFromList(left_items, c)
+                c.restoreState()
 
                 # Right cell
                 right_items = []
@@ -1153,15 +1157,18 @@ def generate_labels_pdf(label_data: list,
                 if season:   right_items.append(Paragraph(season, rit_sty))
                 if numseeds: right_items.append(Paragraph(f"{numseeds} Seeds", rgt_sty))
                 if saver:    right_items.append(Paragraph(saver, svr_sty))
-                germ_text = germ
+                # Show germ and soil temp as separate clean lines
+                if germ:
+                    right_items.append(Paragraph(f"Germ: {germ}", grm_sty))
                 if soil_t:
-                    germ_text += f"\n@ {soil_t}" if germ else soil_t
-                if germ_text:
-                    right_items.append(Paragraph(f"Germ: {germ_text}", grm_sty))
-                Frame(vdiv_x + 3, body_y, right_w - 4, body_h,
+                    right_items.append(Paragraph(f"Soil: {soil_t}", grm_sty))
+                right_frame = Frame(vdiv_x + 3, body_y, right_w - 4, body_h,
                       leftPadding=0, rightPadding=0,
-                      topPadding=0, bottomPadding=0, showBoundary=0
-                      ).addFromList(right_items, c)
+                      topPadding=0, bottomPadding=0, showBoundary=0)
+                c.saveState()
+                c.clipRect(vdiv_x + 3, body_y, right_w - 4, body_h, stroke=0, fill=0)
+                right_frame.addFromList(right_items, c)
+                c.restoreState()
 
         c.showPage()
         page_idx += 1
@@ -1173,7 +1180,6 @@ def generate_labels_pdf(label_data: list,
 # -------------------------------------------------------------
 # SHARED UI HELPERS
 # -------------------------------------------------------------
-@st.fragment
 def show_download_bar():
     """Show download button if updated xlsx bytes are available."""
     xlsx_bytes = st.session_state.get("xlsx_download_bytes")
@@ -1191,7 +1197,7 @@ def show_download_bar():
 def page_header(title: str, subtitle: str = ""):
     st.markdown(f"""
     <div class="ccmga-title">
-        <h1>seedapp_icon_1.png {title}</h1>
+        <h1>🌹 {title}</h1>
         {"<p>" + subtitle + "</p>" if subtitle else ""}
     </div>
     """, unsafe_allow_html=True)
@@ -1254,7 +1260,7 @@ def page_home():
 |---|---|
 | **Built for** | Cochise County Master Gardener Association |
 | **Labels** | For use with Avery 94207 Labels (2" x 4", 10 per sheet) |
-| **Version** | 2.7 6.10.2026 |
+| **Version** | 2.1 6.8.2026 |
     """)
 
     # -- Seeds with comments or background info over 300 chars -------
@@ -1945,7 +1951,7 @@ def sidebar_nav():
     current_idx = st.session_state.get("_nav_index", 0)
 
     with st.sidebar:
-        st.markdown("## 🌹 CCMGA\n### Seed Library")
+        st.markdown("## 🌵 CCMGA\n### Seed Library")
         # Show logged-in user
         uname = st.session_state.get("user_name", "")
         urole = st.session_state.get("user_role", "user")
@@ -1974,7 +1980,7 @@ def sidebar_nav():
 
         st.markdown(
             "<small>Cochise County Master Gardener Association<br/>"
-            "v2.7 6.10.2026 Alan Borhauer</small>",
+            "v2.0 6.8.2026 Alan Borhauer</small>",
             unsafe_allow_html=True,
         )
         st.markdown("---")
