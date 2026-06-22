@@ -1008,22 +1008,22 @@ def generate_labels_pdf(label_data: list,
     DIVIDER = colors.HexColor("#888888")
     GREEN   = colors.HexColor("#225522")
 
-    title_sty = ParagraphStyle("ttl", fontSize=11, fontName="Helvetica-Bold",
+    title_sty = ParagraphStyle("ttl", fontSize=10, fontName="Helvetica-Bold",
         textColor=GREEN, alignment=TA_CENTER, leading=13, spaceAfter=0)
-    fam_sty = ParagraphStyle("fam", fontSize=10, fontName="Helvetica-Bold",
+    fam_sty = ParagraphStyle("fam", fontSize=9, fontName="Helvetica-Bold",
         textColor=colors.red, alignment=TA_LEFT, leading=12, spaceAfter=1)
-    var_sty = ParagraphStyle("var", fontSize=10, fontName="Helvetica-Oblique",
+    var_sty = ParagraphStyle("var", fontSize=9, fontName="Helvetica-Oblique",
         textColor=colors.black, alignment=TA_LEFT, leading=12, spaceAfter=2)
-    cmt_sty = ParagraphStyle("cmt", fontSize=9, fontName="Helvetica",
+    cmt_sty = ParagraphStyle("cmt", fontSize=8, fontName="Helvetica",
         textColor=colors.black, alignment=TA_LEFT, leading=11, spaceAfter=0)
-    rgt_sty = ParagraphStyle("rgt", fontSize=9, fontName="Helvetica",
+    rgt_sty = ParagraphStyle("rgt", fontSize=8, fontName="Helvetica",
         textColor=colors.black, alignment=TA_CENTER, leading=11, spaceAfter=1)
-    rit_sty = ParagraphStyle("rit", fontSize=9, fontName="Helvetica-Oblique",
+    rit_sty = ParagraphStyle("rit", fontSize=8, fontName="Helvetica-Oblique",
         textColor=colors.black, alignment=TA_CENTER, leading=11, spaceAfter=1)
-    svr_sty = ParagraphStyle("svr", fontSize=7, fontName="Helvetica-Bold",
+    svr_sty = ParagraphStyle("svr", fontSize=6, fontName="Helvetica-Bold",
         textColor=colors.black, alignment=TA_CENTER, leading=9,
         spaceAfter=1, wordWrap="LTR")
-    grm_sty = ParagraphStyle("grm", fontSize=8, fontName="Helvetica",
+    grm_sty = ParagraphStyle("grm", fontSize=7, fontName="Helvetica",
         textColor=colors.black, alignment=TA_CENTER, leading=10, spaceAfter=0)
 
     buf = io.BytesIO()
