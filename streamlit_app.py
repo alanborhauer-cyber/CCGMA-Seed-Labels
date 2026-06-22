@@ -957,6 +957,10 @@ Login to admin panel.
     except:
 
         pass
+
+# =============================================================
+# Label Printing Functions
+# =============================================================
 def generate_labels_pdf(label_data: list,
                         include_background: bool = False) -> bytes | None:
     """Returns PDF bytes or None on error.
