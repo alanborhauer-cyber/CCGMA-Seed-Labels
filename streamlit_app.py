@@ -1000,8 +1000,8 @@ def generate_labels_pdf(label_data: list,
     COLS, ROWS      = 2, 5
     PER_PAGE        = COLS * ROWS
 
-    PAD_L, PAD_R, PAD_T, PAD_B = 5, 5, 5, 5
-    TITLE_H         = 28
+    PAD_L, PAD_R, PAD_T, PAD_B = 5, 5, 3, 5
+    TITLE_H         = 20
     LEFT_FRAC       = 2 / 3
 
     BORDER  = colors.HexColor("#000000")
