@@ -1740,18 +1740,18 @@ def page_labels():
         st.rerun()
     include_bg = st.session_state.label_include_bg
 
-top1, top2, top3 = st.columns([2,2,2])
-
-with top1:
-    st.metric("Seeds Selected", n_seeds)
-
-with top2:
-    st.metric("Total Labels", total_labels)
-
-with top3:
-    if st.button("Generate PDF", type="primary",
-                 use_container_width=True):
-        ...
+        top1, top2, top3 = st.columns([2,2,2])
+        
+        with top1:
+            st.metric("Seeds Selected", n_seeds)
+        
+        with top2:
+            st.metric("Total Labels", total_labels)
+        
+        with top3:
+            if st.button("Generate PDF", type="primary",
+                         use_container_width=True):
+                ...
     
     # Per-seed rows: checkbox + qty number input
     st.markdown("**Select seeds and quantities:**")
