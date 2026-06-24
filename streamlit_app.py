@@ -1870,10 +1870,10 @@ with pdf_placeholder:
                 use_container_width=True,
                 key="download_pdf_top"
             )
-                st.success(
-                    f"PDF ready -- {total_labels} labels across "
-                    f"{-(-total_labels // 10)} page(s). "
-                    "Print at Actual Size (100%).")
+            st.success(
+                f"PDF ready -- {total_labels} labels across "
+                f"{-(-total_labels // 10)} page(s). "
+                "Print at Actual Size (100%).")
 
 
 def page_admin():
