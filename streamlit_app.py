@@ -1818,37 +1818,37 @@ with top3:
 # Summary
 # -------------------------------------------------
 
-    st.divider()
+st.divider()
     
-    m1, m2 = st.columns(2)
+m1, m2 = st.columns(2)
     
-    with m1:
-        st.metric("Seeds Selected", n_seeds)
+with m1:
+    st.metric("Seeds Selected", n_seeds)
     
-    with m2:
-        st.metric("Total Labels", total_labels)
+with m2:
+    st.metric("Total Labels", total_labels)
 
 # -------------------------------------------------
 # PDF Controls at Top
 # -------------------------------------------------
     
-            with pdf_placeholder:
+        with pdf_placeholder:
             
-                if n_seeds == 0:
-                    st.warning("Set Qty to 1 or more on at least one seed.")
+            if n_seeds == 0:
+                   st.warning("Set Qty to 1 or more on at least one seed.")
             
-                else:
+            else:
         
-                if st.button(
-                    "Generate & Download PDF",
+            if st.button(
+                "Generate & Download PDF",
                     type="primary",
                     use_container_width=True,
                     key="generate_pdf_top"
                 ):
 
-            with st.spinner("Generating PDF..."):
+        with st.spinner("Generating PDF..."):
 
-                pdf_bytes = generate_labels_pdf(
+            pdf_bytes = generate_labels_pdf(
                     label_data,
                     include_background=st.session_state.get(
                         "label_include_bg",
@@ -1856,9 +1856,9 @@ with top3:
                     )
                 )
 
-            if pdf_bytes:
+        if pdf_bytes:
 
-                st.session_state["pdf_bytes"] = pdf_bytes
+            st.session_state["pdf_bytes"] = pdf_bytes
 
         if "pdf_bytes" in st.session_state:
 
