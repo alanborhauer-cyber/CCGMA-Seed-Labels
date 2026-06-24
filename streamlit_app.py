@@ -1831,13 +1831,13 @@ with top3:
 # -------------------------------------------------
 # PDF Controls at Top
 # -------------------------------------------------
-
-    with pdf_placeholder:
     
-        if n_seeds == 0:
-            st.warning("Set Qty to 1 or more on at least one seed.")
-    
-        else:
+        with pdf_placeholder:
+        
+            if n_seeds == 0:
+                st.warning("Set Qty to 1 or more on at least one seed.")
+        
+            else:
     
             if st.button(
                 "Generate & Download PDF",
