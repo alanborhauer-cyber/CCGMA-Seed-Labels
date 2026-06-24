@@ -1728,38 +1728,6 @@ def page_labels():
 
     st.caption(f"{len(rows)} seed(s) loaded. Set Qty >= 1 to include in print job.")
 
-# Calculate current selections
-    row_lookup = {int(r["FileNumber"]): r for r in rows}
-
-    label_data = []
-    total_labels = 0
-
-    for fn, qty in st.session_state.label_qtys.items():
-        if qty > 0 and fn in row_lookup:
-            label_data.append((row_lookup[fn], qty))
-            total_labels += qty
-
-    n_seeds = len(label_data)
-
-# -------------------------------------------------
-# PDF Controls (Top of Page)
-# -------------------------------------------------
-
-pdf_placeholder = st.container()
-
-top_a, top_b = st.columns(2)
-
-with top_a:
-    if st.button("Set All to 1", use_container_width=True):
-        for r in rows:
-            st.session_state.label_qtys[int(r["FileNumber"])] = 1
-        st.rerun()
-
-with top_b:
-    if st.button("Clear All", use_container_width=True):
-        st.session_state.label_qtys = {}
-        st.rerun()
-    
     # Nav-style Background Info toggle button
     if "label_include_bg" not in st.session_state:
         st.session_state.label_include_bg = False
@@ -1772,19 +1740,6 @@ with top_b:
         st.rerun()
     include_bg = st.session_state.label_include_bg
 
-top1, top2, top3 = st.columns([2,2,2])
-
-with top1:
-    st.metric("Seeds Selected", n_seeds)
-
-with top2:
-    st.metric("Total Labels", total_labels)
-
-with top3:
-    if st.button("Generate PDF", type="primary",
-                 use_container_width=True):
-        ...
-                     
     # Per-seed rows: checkbox + qty number input
     st.markdown("**Select seeds and quantities:**")
     hdr = st.columns([1, 7, 2])
@@ -1827,67 +1782,41 @@ with top3:
             total_labels += qty
 
     n_seeds = len(label_data)
+    st.info(f"**{n_seeds}** seed(s) selected -- **{total_labels}** total labels")
 
-# -------------------------------------------------
-# Summary
-# -------------------------------------------------
+    col_a, col_b = st.columns(2)
+    with col_a:
+        if st.button("Set All to 1", use_container_width=True):
+            for r in rows:
+                st.session_state.label_qtys[int(r["FileNumber"])] = 1
+            st.rerun()
+    with col_b:
+        if st.button("Clear All", use_container_width=True):
+            st.session_state.label_qtys = {}
+            st.rerun()
 
-st.divider()
-    
-m1, m2 = st.columns(2)
-    
-with m1:
-    st.metric("Seeds Selected", n_seeds)
-    
-with m2:
-    st.metric("Total Labels", total_labels)
-
-# -------------------------------------------------
-# PDF Controls at Top
-# -------------------------------------------------
-    
-with pdf_placeholder:
-            
+    st.markdown("---")
     if n_seeds == 0:
         st.warning("Set Qty to 1 or more on at least one seed.")
-            
     else:
-        
-        if st.button(
-            "Generate & Download PDF",
-            type="primary",
-            use_container_width=True,
-            key="generate_pdf_top"
-        ):
-
+        if st.button("Generate & Download PDF",
+                     type="primary", use_container_width=True):
             with st.spinner("Generating PDF..."):
-
                 pdf_bytes = generate_labels_pdf(
                     label_data,
-                    include_background=st.session_state.get(
-                        "label_include_bg",
-                        False
-                    )
-                )
-
+                    include_background=st.session_state.get("label_include_bg", False))
             if pdf_bytes:
-
-                st.session_state["pdf_bytes"] = pdf_bytes
-
-        if "pdf_bytes" in st.session_state:
-
-            st.download_button(
-                label="Download seed_labels.pdf",
-                data=st.session_state["pdf_bytes"],
-                file_name="seed_labels.pdf",
-                mime="application/pdf",
-                use_container_width=True,
-                key="download_pdf_top"
-            )
-            st.success(
-                f"PDF ready -- {total_labels} labels across "
-                f"{-(-total_labels // 10)} page(s). "
-                "Print at Actual Size (100%).")
+                st.download_button(
+                    label="Download seed_labels.pdf",
+                    data=pdf_bytes,
+                    file_name="seed_labels.pdf",
+                    mime="application/pdf",
+                    use_container_width=True,
+                )
+                st.success(
+                    f"PDF ready -- {total_labels} labels across "
+                    f"{-(-total_labels // 10)} page(s). "
+                    "Print at Actual Size (100%).")
 
 
 def page_admin():
@@ -2039,7 +1968,6 @@ def sidebar_nav():
                 st.session_state.pop(k, None)
             st.rerun()
     return page
-
 
 # -------------------------------------------------------------
 # MAIN
