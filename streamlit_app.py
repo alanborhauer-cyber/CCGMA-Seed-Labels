@@ -1729,17 +1729,17 @@ def page_labels():
     st.caption(f"{len(rows)} seed(s) loaded. Set Qty >= 1 to include in print job.")
 
 # Calculate current selections
-        row_lookup = {int(r["FileNumber"]): r for r in rows}
+    row_lookup = {int(r["FileNumber"]): r for r in rows}
 
-        label_data = []
-        total_labels = 0
+    label_data = []
+    total_labels = 0
 
-        for fn, qty in st.session_state.label_qtys.items():
-            if qty > 0 and fn in row_lookup:
-                label_data.append((row_lookup[fn], qty))
-                total_labels += qty
+    for fn, qty in st.session_state.label_qtys.items():
+        if qty > 0 and fn in row_lookup:
+            label_data.append((row_lookup[fn], qty))
+            total_labels += qty
 
-        n_seeds = len(label_data)
+    n_seeds = len(label_data)
 
 # -------------------------------------------------
 # PDF Controls (Top of Page)
