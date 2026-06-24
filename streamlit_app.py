@@ -1818,33 +1818,33 @@ with top3:
 # Summary
 # -------------------------------------------------
 
-st.divider()
-
-m1, m2 = st.columns(2)
-
-with m1:
-    st.metric("Seeds Selected", n_seeds)
-
-with m2:
-    st.metric("Total Labels", total_labels)
+    st.divider()
+    
+    m1, m2 = st.columns(2)
+    
+    with m1:
+        st.metric("Seeds Selected", n_seeds)
+    
+    with m2:
+        st.metric("Total Labels", total_labels)
 
 # -------------------------------------------------
 # PDF Controls at Top
 # -------------------------------------------------
 
-with pdf_placeholder:
-
-    if n_seeds == 0:
-        st.warning("Set Qty to 1 or more on at least one seed.")
-
-    else:
-
-        if st.button(
-            "Generate & Download PDF",
-            type="primary",
-            use_container_width=True,
-            key="generate_pdf_top"
-        ):
+    with pdf_placeholder:
+    
+        if n_seeds == 0:
+            st.warning("Set Qty to 1 or more on at least one seed.")
+    
+        else:
+    
+            if st.button(
+                "Generate & Download PDF",
+                type="primary",
+                use_container_width=True,
+                key="generate_pdf_top"
+            ):
 
             with st.spinner("Generating PDF..."):
 
