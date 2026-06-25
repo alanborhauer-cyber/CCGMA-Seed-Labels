@@ -1,40 +1,40 @@
 #!/usr/bin/env python3
-... """
-... Cochise County Master Gardener Association -- Seed Library
-... Streamlit Web Application
-... Run with:  streamlit run streamlit_app.py
-... """
-... 
-... import os
-... import io
-... import sys
-... import sqlite3
-... import json
-... import tempfile
-... import random
-... import smtplib
-... from email.mime.text import MIMEText
-... from datetime import datetime, timedelta
-... import streamlit as st
-... 
-... # -------------------------------------------------------------
-... # PAGE CONFIG (must be first Streamlit call)
-... # -------------------------------------------------------------
-... # Load custom icon
-... try:
-...     from PIL import Image as _PILImage
-...     import os as _os
-...     _icon_path = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "SaguaroFlower.png")
-...     if _os.path.exists(_icon_path):
-...         _page_icon = _PILImage.open(_icon_path)
-...     else:
-...         _page_icon = "🌵"
-... except Exception:
-...     _page_icon = "🌵"
-... 
-... st.set_page_config(
-...     page_title="CCMGA Seed Library",
-...     page_icon=_page_icon,
+"""
+Cochise County Master Gardener Association -- Seed Library
+Streamlit Web Application
+Run with:  streamlit run streamlit_app.py
+"""
+
+import os
+import io
+import sys
+import sqlite3
+import json
+import tempfile
+import random
+import smtplib
+from email.mime.text import MIMEText
+from datetime import datetime, timedelta
+import streamlit as st
+
+# -------------------------------------------------------------
+# PAGE CONFIG (must be first Streamlit call)
+# -------------------------------------------------------------
+# Load custom icon
+try:
+    from PIL import Image as _PILImage
+    import os as _os
+    _icon_path = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "SaguaroFlower.png")
+    if _os.path.exists(_icon_path):
+        _page_icon = _PILImage.open(_icon_path)
+    else:
+        _page_icon = "🌵"
+except Exception:
+    _page_icon = "🌵"
+
+st.set_page_config(
+    page_title="CCMGA Seed Library",
+    page_icon=_page_icon,
     layout="centered",
     initial_sidebar_state="collapsed",
 )
