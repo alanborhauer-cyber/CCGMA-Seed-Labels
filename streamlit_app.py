@@ -1012,8 +1012,8 @@ def generate_labels_pdf(label_data: list,
     COLS, ROWS      = 2, 5
     PER_PAGE        = COLS * ROWS
 
-    PAD_L, PAD_R, PAD_T, PAD_B = 4, 4, 2, 3
-    TITLE_H         = 20
+    PAD_L, PAD_R, PAD_T, PAD_B = 4, 4, 3, 3
+    TITLE_H         = 24
     LEFT_FRAC       = 2 / 3
 
     BORDER  = colors.HexColor("#000000")
@@ -1021,7 +1021,7 @@ def generate_labels_pdf(label_data: list,
     GREEN   = colors.HexColor("#225522")
 
     title_sty = ParagraphStyle("ttl", fontSize=10, fontName="Helvetica-Bold",
-        textColor=GREEN, alignment=TA_CENTER, leading=11, spaceAfter=0)
+        textColor=GREEN, alignment=TA_CENTER, leading=12, spaceAfter=0)
     fam_sty = ParagraphStyle("fam", fontSize=10, fontName="Helvetica-Bold",
         textColor=colors.red, alignment=TA_LEFT, leading=12, spaceAfter=1)
     var_sty = ParagraphStyle("var", fontSize=10, fontName="Helvetica-Oblique",
