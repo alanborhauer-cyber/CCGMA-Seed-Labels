@@ -1205,7 +1205,7 @@ def show_download_bar():
 def page_header(title: str, subtitle: str = ""):
     st.markdown(f"""
     <div class="ccmga-title">
-        <h1>🌹 {title}</h1>
+        <h1>🌵 {title}</h1>
         {"<p>" + subtitle + "</p>" if subtitle else ""}
     </div>
     """, unsafe_allow_html=True)
