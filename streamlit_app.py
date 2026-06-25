@@ -1,28 +1,42 @@
-#!/usr/bin/env python3
-"""
-Cochise County Master Gardener Association -- Seed Library
-Streamlit Web Application
-Run with:  streamlit run streamlit_app.py
-"""
-
-import os
-import io
-import sys
-import sqlite3
-import json
-import tempfile
-import random
-import smtplib
-from email.mime.text import MIMEText
-from datetime import datetime, timedelta
-import streamlit as st
-
-# -------------------------------------------------------------
-# PAGE CONFIG (must be first Streamlit call)
-# -------------------------------------------------------------
-st.set_page_config(
-    page_title="CCMGA Seed Library",
-    page_icon="🌹",
+Python 3.14.5 (v3.14.5:5607950ef23, May 10 2026, 07:38:09) [Clang 21.0.0 (clang-2100.0.123.102)] on darwin
+Enter "help" below or click "Help" above for more information.
+>>> #!/usr/bin/env python3
+... """
+... Cochise County Master Gardener Association -- Seed Library
+... Streamlit Web Application
+... Run with:  streamlit run streamlit_app.py
+... """
+... 
+... import os
+... import io
+... import sys
+... import sqlite3
+... import json
+... import tempfile
+... import random
+... import smtplib
+... from email.mime.text import MIMEText
+... from datetime import datetime, timedelta
+... import streamlit as st
+... 
+... # -------------------------------------------------------------
+... # PAGE CONFIG (must be first Streamlit call)
+... # -------------------------------------------------------------
+... # Load custom icon
+... try:
+...     from PIL import Image as _PILImage
+...     import os as _os
+...     _icon_path = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "SaguaroFlower.png")
+...     if _os.path.exists(_icon_path):
+...         _page_icon = _PILImage.open(_icon_path)
+...     else:
+...         _page_icon = "🌵"
+... except Exception:
+...     _page_icon = "🌵"
+... 
+... st.set_page_config(
+...     page_title="CCMGA Seed Library",
+...     page_icon=_page_icon,
     layout="centered",
     initial_sidebar_state="collapsed",
 )
@@ -51,7 +65,7 @@ def check_password():
         st.markdown("""
         <div style="background:#1b5e20;padding:24px 32px;border-radius:12px;
                     text-align:center;margin-bottom:16px;">
-          <h2 style="color:white;margin:0;">🌹 CCMGA Seed Library</h2>
+          <h2 style="color:white;margin:0;">🌵 CCMGA Seed Library</h2>
           <p style="color:#c8e6c9;margin:4px 0 0 0;">
             Cochise County Master Gardener Association</p>
         </div>""", unsafe_allow_html=True)
@@ -957,10 +971,6 @@ Login to admin panel.
     except:
 
         pass
-
-# =============================================================
-# Label Printing Functions
-# =============================================================
 def generate_labels_pdf(label_data: list,
                         include_background: bool = False) -> bytes | None:
     """Returns PDF bytes or None on error.
@@ -1004,8 +1014,8 @@ def generate_labels_pdf(label_data: list,
     COLS, ROWS      = 2, 5
     PER_PAGE        = COLS * ROWS
 
-    PAD_L, PAD_R, PAD_T, PAD_B = 5, 5, 5, 5
-    TITLE_H         = 28
+    PAD_L, PAD_R, PAD_T, PAD_B = 4, 4, 2, 3
+    TITLE_H         = 20
     LEFT_FRAC       = 2 / 3
 
     BORDER  = colors.HexColor("#000000")
@@ -1013,21 +1023,21 @@ def generate_labels_pdf(label_data: list,
     GREEN   = colors.HexColor("#225522")
 
     title_sty = ParagraphStyle("ttl", fontSize=10, fontName="Helvetica-Bold",
-        textColor=GREEN, alignment=TA_CENTER, leading=13, spaceAfter=0)
-    fam_sty = ParagraphStyle("fam", fontSize=9, fontName="Helvetica-Bold",
+        textColor=GREEN, alignment=TA_CENTER, leading=11, spaceAfter=0)
+    fam_sty = ParagraphStyle("fam", fontSize=10, fontName="Helvetica-Bold",
         textColor=colors.red, alignment=TA_LEFT, leading=12, spaceAfter=1)
-    var_sty = ParagraphStyle("var", fontSize=9, fontName="Helvetica-Oblique",
+    var_sty = ParagraphStyle("var", fontSize=10, fontName="Helvetica-Oblique",
         textColor=colors.black, alignment=TA_LEFT, leading=12, spaceAfter=2)
-    cmt_sty = ParagraphStyle("cmt", fontSize=8, fontName="Helvetica",
+    cmt_sty = ParagraphStyle("cmt", fontSize=9, fontName="Helvetica",
         textColor=colors.black, alignment=TA_LEFT, leading=11, spaceAfter=0)
-    rgt_sty = ParagraphStyle("rgt", fontSize=8, fontName="Helvetica",
+    rgt_sty = ParagraphStyle("rgt", fontSize=9, fontName="Helvetica",
         textColor=colors.black, alignment=TA_CENTER, leading=11, spaceAfter=1)
-    rit_sty = ParagraphStyle("rit", fontSize=8, fontName="Helvetica-Oblique",
+    rit_sty = ParagraphStyle("rit", fontSize=9, fontName="Helvetica-Oblique",
         textColor=colors.black, alignment=TA_CENTER, leading=11, spaceAfter=1)
-    svr_sty = ParagraphStyle("svr", fontSize=6, fontName="Helvetica-Bold",
+    svr_sty = ParagraphStyle("svr", fontSize=7, fontName="Helvetica-Bold",
         textColor=colors.black, alignment=TA_CENTER, leading=9,
         spaceAfter=1, wordWrap="LTR")
-    grm_sty = ParagraphStyle("grm", fontSize=7, fontName="Helvetica",
+    grm_sty = ParagraphStyle("grm", fontSize=8, fontName="Helvetica",
         textColor=colors.black, alignment=TA_CENTER, leading=10, spaceAfter=0)
 
     buf = io.BytesIO()
@@ -1087,25 +1097,37 @@ def generate_labels_pdf(label_data: list,
                     Paragraph(f"{variety} -- Background Information", bg_title_sty),
                     Paragraph(bg_info, bg_body_sty),
                 ]
-                Frame(lx + BG_PAD, ly + BG_PAD, full_w, full_h,
+                bg_frame = Frame(lx + BG_PAD, ly + BG_PAD, full_w, full_h,
                       leftPadding=0, rightPadding=0,
                       topPadding=0, bottomPadding=0,
-                      showBoundary=0).addFromList(all_bg, c)
+                      showBoundary=0)
+                c.saveState()
+                _clip = c.beginPath()
+                _clip.rect(lx + BG_PAD, ly + BG_PAD, full_w, full_h)
+                c.clipPath(_clip, stroke=0, fill=0)
+                bg_frame.addFromList(all_bg, c)
+                c.restoreState()
 
             else:
                 # -- Standard seed label ----------------------------
                 TITLE_H_USE = TITLE_H
                 ty     = ly + LABEL_H - PAD_T - TITLE_H_USE
-                body_h = LABEL_H - PAD_T - TITLE_H_USE - 3 - PAD_B
+                body_h = LABEL_H - PAD_T - TITLE_H_USE - 2 - PAD_B
                 left_w = body_w * LEFT_FRAC
                 right_w = body_w * (1 - LEFT_FRAC)
                 vdiv_x = body_x + left_w + 2
 
                 # Header
-                Frame(tx, ty, tw, TITLE_H_USE, leftPadding=0, rightPadding=0,
-                      topPadding=0, bottomPadding=0, showBoundary=0).addFromList(
+                title_frame = Frame(tx, ty, tw, TITLE_H_USE, leftPadding=0, rightPadding=0,
+                      topPadding=0, bottomPadding=0, showBoundary=0)
+                c.saveState()
+                _clip = c.beginPath()
+                _clip.rect(tx, ty, tw, TITLE_H_USE)
+                c.clipPath(_clip, stroke=0, fill=0)
+                title_frame.addFromList(
                     [Paragraph("Cochise County Master Gardener Association"
                                "<br/>Seed Library", title_sty)], c)
+                c.restoreState()
 
                 # Thin horizontal divider under header
                 div_y = ly + LABEL_H - PAD_T - TITLE_H_USE - 1
@@ -1126,10 +1148,15 @@ def generate_labels_pdf(label_data: list,
                     textColor=colors.HexColor("#b71c1c"),
                     alignment=TA_LEFT, leading=9)))
                 if comment: left_items.append(Paragraph(comment, cmt_sty))
-                Frame(body_x, body_y, left_w - 4, body_h,
+                left_frame = Frame(body_x, body_y, left_w - 4, body_h,
                       leftPadding=0, rightPadding=0,
-                      topPadding=0, bottomPadding=0, showBoundary=0
-                      ).addFromList(left_items, c)
+                      topPadding=0, bottomPadding=0, showBoundary=0)
+                c.saveState()
+                _clip = c.beginPath()
+                _clip.rect(body_x, body_y, left_w - 4, body_h)
+                c.clipPath(_clip, stroke=0, fill=0)
+                left_frame.addFromList(left_items, c)
+                c.restoreState()
 
                 # Right cell
                 right_items = []
@@ -1138,15 +1165,20 @@ def generate_labels_pdf(label_data: list,
                 if season:   right_items.append(Paragraph(season, rit_sty))
                 if numseeds: right_items.append(Paragraph(f"{numseeds} Seeds", rgt_sty))
                 if saver:    right_items.append(Paragraph(saver, svr_sty))
-                germ_text = germ
+                # Show germ and soil temp as separate clean lines
+                if germ:
+                    right_items.append(Paragraph(f"Germ: {germ}", grm_sty))
                 if soil_t:
-                    germ_text += f"\n@ {soil_t}" if germ else soil_t
-                if germ_text:
-                    right_items.append(Paragraph(f"Germ: {germ_text}", grm_sty))
-                Frame(vdiv_x + 3, body_y, right_w - 4, body_h,
+                    right_items.append(Paragraph(f"Soil: {soil_t}", grm_sty))
+                right_frame = Frame(vdiv_x + 3, body_y, right_w - 4, body_h,
                       leftPadding=0, rightPadding=0,
-                      topPadding=0, bottomPadding=0, showBoundary=0
-                      ).addFromList(right_items, c)
+                      topPadding=0, bottomPadding=0, showBoundary=0)
+                c.saveState()
+                _clip = c.beginPath()
+                _clip.rect(vdiv_x + 3, body_y, right_w - 4, body_h)
+                c.clipPath(_clip, stroke=0, fill=0)
+                right_frame.addFromList(right_items, c)
+                c.restoreState()
 
         c.showPage()
         page_idx += 1
@@ -1698,50 +1730,124 @@ def page_labels():
     page_header("Print Seed Labels",
                 "Avery 94207 -- 2 inch x 4 inch labels, 10 per sheet (2 cols x 5 rows)")
 
-    # Search bar
-    term = st.text_input("Search", placeholder="Family, variety, or file number...",
+    # Session state init
+    if "label_term"       not in st.session_state: st.session_state.label_term       = ""
+    if "label_qtys"       not in st.session_state: st.session_state.label_qtys       = {}
+    if "label_include_bg" not in st.session_state: st.session_state.label_include_bg = False
+    if "label_pdf_bytes"  not in st.session_state: st.session_state.label_pdf_bytes  = None
+
+    # Fetch rows once
+    rows       = db_search(st.session_state.label_term)
+    row_lookup = {int(r["FileNumber"]): r for r in rows}
+
+    # Build label_data from current selections
+    label_data   = []
+    total_labels = 0
+    for fn, qty in st.session_state.label_qtys.items():
+        if qty > 0 and fn in row_lookup:
+            label_data.append((row_lookup[fn], qty))
+            total_labels += qty
+    n_seeds = len(label_data)
+
+    # ═══════════════════════════════════════════════════════════════
+    # TOP PANEL: summary + generate + download  (always visible)
+    # ═══════════════════════════════════════════════════════════════
+    st.markdown(
+        f"<div style='background:#e3f2fd;padding:10px 14px;border-radius:8px;"
+        f"margin-bottom:10px;font-size:1.05rem;'>"
+        f"<b>{n_seeds}</b> seed type(s) selected &nbsp;|&nbsp; "
+        f"<b>{total_labels}</b> total labels</div>",
+        unsafe_allow_html=True)
+
+    btn1, btn2, btn3 = st.columns([3, 3, 2])
+    with btn1:
+        gen_clicked = st.button(
+            "Generate PDF",
+            type="primary",
+            use_container_width=True,
+            disabled=(n_seeds == 0),
+            key="gen_pdf_btn")
+    with btn2:
+        if st.session_state.label_pdf_bytes:
+            st.download_button(
+                label="Download seed_labels.pdf",
+                data=st.session_state.label_pdf_bytes,
+                file_name="seed_labels.pdf",
+                mime="application/pdf",
+                use_container_width=True,
+                key="dl_pdf_btn")
+        else:
+            st.button("Download PDF", disabled=True,
+                      use_container_width=True, key="dl_pdf_btn_off")
+    with btn3:
+        bg_active = st.session_state.label_include_bg
+        if st.button(
+                "BG: ON" if bg_active else "BG: OFF",
+                use_container_width=True,
+                type="primary" if bg_active else "secondary",
+                key="bg_toggle"):
+            st.session_state.label_include_bg = not bg_active
+            st.session_state.label_pdf_bytes  = None
+            st.rerun()
+
+    if gen_clicked:
+        with st.spinner("Generating PDF..."):
+            pdf_bytes = generate_labels_pdf(
+                label_data,
+                include_background=st.session_state.label_include_bg)
+        if pdf_bytes:
+            st.session_state.label_pdf_bytes = pdf_bytes
+            pages = -(-total_labels // 10)
+            st.success(
+                f"PDF ready -- {total_labels} labels across {pages} page(s). "
+                "Print at Actual Size (100%). Click Download above.")
+            st.rerun()
+
+    if st.session_state.label_pdf_bytes and not gen_clicked:
+        pages = -(-total_labels // 10)
+        st.caption(f"Last PDF: {total_labels} labels / {pages} page(s). "
+                   "Re-generate if selections changed.")
+
+    st.divider()
+
+    # ═══════════════════════════════════════════════════════════════
+    # SEARCH + BULK ACTIONS
+    # ═══════════════════════════════════════════════════════════════
+    term = st.text_input("Search seeds",
+                         placeholder="Family, variety, or file number...",
                          key="label_search")
-    c_l1, c_l2 = st.columns(2)
-    with c_l1:
-        if st.button("Search", use_container_width=True, key="lbl_search_btn"):
-            st.session_state.label_term = term
+    sa, sb, sc, sd = st.columns(4)
+    with sa:
+        if st.button("Search", use_container_width=True, key="lbl_srch"):
+            st.session_state.label_term      = term
+            st.session_state.label_pdf_bytes = None
             st.rerun()
-    with c_l2:
-        if st.button("Load All", use_container_width=True):
-            st.session_state.label_term = ""
+    with sb:
+        if st.button("Load All", use_container_width=True, key="lbl_all"):
+            st.session_state.label_term      = ""
+            st.session_state.label_pdf_bytes = None
             st.rerun()
-
-    # Auto-init on first visit
-    if "label_term" not in st.session_state:
-        st.session_state.label_term = ""
-    if "label_qtys" not in st.session_state:
-        st.session_state.label_qtys = {}
-
-    rows = db_search(st.session_state.label_term)
+    with sc:
+        if st.button("Set All to 1", use_container_width=True, key="lbl_set1"):
+            for r in rows:
+                st.session_state.label_qtys[int(r["FileNumber"])] = 1
+            st.session_state.label_pdf_bytes = None
+            st.rerun()
+    with sd:
+        if st.button("Clear All", use_container_width=True, key="lbl_clr"):
+            st.session_state.label_qtys      = {}
+            st.session_state.label_pdf_bytes = None
+            st.rerun()
 
     if not rows:
-        if st.session_state.label_term:
-            st.info(f"No seeds match. Click Load All.")
-        else:
-            st.warning("No seeds found in database.")
+        st.info("No seeds found. Click Load All or try a different search.")
         return
 
-    st.caption(f"{len(rows)} seed(s) loaded. Set Qty >= 1 to include in print job.")
+    st.caption(f"{len(rows)} seed(s) in list. Qty >= 1 = included in PDF.")
 
-    # Nav-style Background Info toggle button
-    if "label_include_bg" not in st.session_state:
-        st.session_state.label_include_bg = False
-    bg_active = st.session_state.label_include_bg
-    bg_label   = "Background Info Labels: ON" if bg_active else "Background Info Labels: OFF"
-    if st.button(bg_label,
-                 use_container_width=True,
-                 type="primary" if bg_active else "secondary"):
-        st.session_state.label_include_bg = not bg_active
-        st.rerun()
-    include_bg = st.session_state.label_include_bg
-
-    # Per-seed rows: checkbox + qty number input
-    st.markdown("**Select seeds and quantities:**")
+    # ═══════════════════════════════════════════════════════════════
+    # SEED SELECTION LIST
+    # ═══════════════════════════════════════════════════════════════
     hdr = st.columns([1, 7, 2])
     hdr[0].markdown("**Sel**")
     hdr[1].markdown("**Family / Variety**")
@@ -1770,53 +1876,6 @@ def page_labels():
         if not checked:
             new_qty = 0
         st.session_state.label_qtys[fn] = new_qty
-
-    # Summary
-    st.divider()
-    label_data   = []
-    row_lookup   = {int(r["FileNumber"]): r for r in rows}
-    total_labels = 0
-    for fn, qty in st.session_state.label_qtys.items():
-        if qty > 0 and fn in row_lookup:
-            label_data.append((row_lookup[fn], qty))
-            total_labels += qty
-
-    n_seeds = len(label_data)
-    st.info(f"**{n_seeds}** seed(s) selected -- **{total_labels}** total labels")
-
-    col_a, col_b = st.columns(2)
-    with col_a:
-        if st.button("Set All to 1", use_container_width=True):
-            for r in rows:
-                st.session_state.label_qtys[int(r["FileNumber"])] = 1
-            st.rerun()
-    with col_b:
-        if st.button("Clear All", use_container_width=True):
-            st.session_state.label_qtys = {}
-            st.rerun()
-
-    st.markdown("---")
-    if n_seeds == 0:
-        st.warning("Set Qty to 1 or more on at least one seed.")
-    else:
-        if st.button("Generate & Download PDF",
-                     type="primary", use_container_width=True):
-            with st.spinner("Generating PDF..."):
-                pdf_bytes = generate_labels_pdf(
-                    label_data,
-                    include_background=st.session_state.get("label_include_bg", False))
-            if pdf_bytes:
-                st.download_button(
-                    label="Download seed_labels.pdf",
-                    data=pdf_bytes,
-                    file_name="seed_labels.pdf",
-                    mime="application/pdf",
-                    use_container_width=True,
-                )
-                st.success(
-                    f"PDF ready -- {total_labels} labels across "
-                    f"{-(-total_labels // 10)} page(s). "
-                    "Print at Actual Size (100%).")
 
 
 def page_admin():
@@ -1929,7 +1988,7 @@ def sidebar_nav():
     current_idx = st.session_state.get("_nav_index", 0)
 
     with st.sidebar:
-        st.markdown("## 🌹 CCMGA\n### Seed Library")
+        st.markdown("## 🌵 CCMGA\n### Seed Library")
         # Show logged-in user
         uname = st.session_state.get("user_name", "")
         urole = st.session_state.get("user_role", "user")
@@ -1969,6 +2028,7 @@ def sidebar_nav():
             st.rerun()
     return page
 
+
 # -------------------------------------------------------------
 # MAIN
 # -------------------------------------------------------------
@@ -2005,4 +2065,3 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
