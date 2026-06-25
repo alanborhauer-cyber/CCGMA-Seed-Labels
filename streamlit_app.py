@@ -1,4 +1,4 @@
->>> #!/usr/bin/env python3
+#!/usr/bin/env python3
 ... """
 ... Cochise County Master Gardener Association -- Seed Library
 ... Streamlit Web Application
