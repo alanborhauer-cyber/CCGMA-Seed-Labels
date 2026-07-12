@@ -535,16 +535,10 @@ def init_db():
         return
     try:
         _ensure_table()
-        if not _seed_table_populated():
-            _load_from_xlsx_to_pg()
-        else:
-            count = db_count()
-            st.session_state["db_status"] = "ok"
-            st.session_state["db_msg"] = f"✅ Connected -- {count:,} seeds in PostgreSQL."
-        st.session_state["db_ready"] = True
+        st.success("Database tables initialized successfully")
     except Exception as e:
-        st.session_state["db_status"] = "error"
-        st.session_state["db_msg"] = f"[x] Database connection error: {e}"
+        st.exception(e)
+        st.stop()
 
 
 # -- CRUD -----------------------------------------------------
