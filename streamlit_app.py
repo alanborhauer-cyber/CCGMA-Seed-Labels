@@ -390,7 +390,7 @@ import streamlit as st
 import psycopg2
 
 def get_pg_conn():
-    """Return a psycopg2 connection using st.secrets['DATABASE_URL']."""
+    """Return a psycopg2 connection using DATABASE_URL."""
     import psycopg2
     import psycopg2.extras
 
