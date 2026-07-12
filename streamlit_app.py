@@ -387,22 +387,12 @@ CREATE_SQL = """
 # -------------------------------------------------------------
 
 def get_pg_conn():
-    import psycopg2
-    import psycopg2.extras
+    import streamlit as st
 
-    url = st.secrets["DATABASE_URL"]
-
-    st.write("DATABASE_URL being used:")
-    st.code(url)
+    st.write("DATABASE_URL currently in use:")
+    st.code(st.secrets["DATABASE_URL"])
 
     st.stop()
-
-    conn = psycopg2.connect(
-        url,
-        cursor_factory=psycopg2.extras.RealDictCursor
-    )
-    conn.autocommit = False
-    return conn
 
 CREATE_USERS_SQL = """
     CREATE TABLE IF NOT EXISTS app_users (
