@@ -406,7 +406,7 @@ def get_pg_conn():
 
     except Exception as e:
         st.exception(e)
-        st.stop()
+        raise
     
 CREATE_USERS_SQL = """
     CREATE TABLE IF NOT EXISTS app_users (
