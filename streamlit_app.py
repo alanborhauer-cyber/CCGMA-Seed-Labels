@@ -391,6 +391,9 @@ def get_pg_conn():
     import psycopg2
     import psycopg2.extras
     url = st.secrets["DATABASE_URL"]
+    st.write("DATABASE_URL =", st.secrets["DATABASE_URL"])
+    url = st.secrets["DATABASE_URL"]
+    st.stop()
     conn = psycopg2.connect(url, cursor_factory=psycopg2.extras.RealDictCursor)
     conn.autocommit = False
     return conn
