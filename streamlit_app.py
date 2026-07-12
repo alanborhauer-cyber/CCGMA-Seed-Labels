@@ -84,7 +84,7 @@ def _auth_login(col):
     email    = st.text_input("Email", key="login_email")
     password = st.text_input("Password", type="password", key="login_pw")
 
-    if st.button("Log In", use_container_width=True, type="primary"):
+    if st.button("Log In", width='stretch', type="primary"):
             if not email or not password:
                 st.error("Please enter email and password.")
             else:
@@ -109,7 +109,7 @@ def _auth_login(col):
                     st.session_state.pop("current_page", None)
                     st.session_state.pop("_prev_selected", None)
                     st.rerun()
-    if st.button("Register", use_container_width=True):
+    if st.button("Register", width='stretch'):
         st.session_state.auth_step = "register"
         st.rerun()
 
@@ -121,7 +121,7 @@ def _auth_register(col):
     password = st.text_input("Password",             key="reg_pw",   type="password")
     confirm  = st.text_input("Confirm Password",     key="reg_pw2",  type="password")
 
-    if st.button("Sign Up", use_container_width=True, type="primary"):
+    if st.button("Sign Up", width='stretch', type="primary"):
             if not all([name, email, password, confirm]):
                 st.error("All fields are required.")
             elif password != confirm:
@@ -146,7 +146,7 @@ def _auth_register(col):
                     st.rerun()
                 else:
                     st.error(f"Registration error: {result}")
-    if st.button("Back to Login", use_container_width=True):
+    if st.button("Back to Login", width='stretch'):
         st.session_state.auth_step = "login"
         st.rerun()
 
@@ -159,7 +159,7 @@ def _auth_verify(col):
 
     c1, c2, c3 = st.columns(3)
     with c1:
-        if st.button("Verify", use_container_width=True, type="primary"):
+        if st.button("Verify", width='stretch', type="primary"):
             if not code or len(code) != 6:
                 st.error("Enter the 6-digit code.")
             else:
@@ -176,8 +176,8 @@ def _auth_verify(col):
                     st.error("Invalid code. Please try again.")
                     
     with c2:
-        # Fixed: Changed width="stretch" to use_container_width=True
-        if st.button("Resend Code", use_container_width=True):
+        # Fixed: Changed width="stretch" to width='stretch'
+        if st.button("Resend Code", width='stretch'):
             with st.spinner("Sending..."):
                 success = user_resend_code(email)
             # Fixed: Moved the success check inside the button scope
@@ -187,7 +187,7 @@ def _auth_verify(col):
                 st.error("Failed to send. Contact admin.")
         
     with c3:
-        if st.button("Back to Login", use_container_width=True):
+        if st.button("Back to Login", width='stretch'):
             st.session_state.auth_step = "login"
             st.rerun()
 
@@ -1213,7 +1213,7 @@ def show_download_bar():
             file_name="_SEED_LIBRARY_PARSED.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             help="Download and replace your local xlsx file to keep changes permanent.",
-            use_container_width=True,
+            width='stretch',
         )
 
 
@@ -1312,7 +1312,7 @@ def page_home():
         import pandas as pd
         st.dataframe(
             pd.DataFrame(rows_display),
-            use_container_width=True,
+            width='stretch',
             hide_index=True,
         )
 
@@ -1328,9 +1328,9 @@ def page_browse():
                          key="browse_search")
     c_s1, c_s2 = st.columns(2)
     with c_s1:
-        search_clicked = st.button("Search", use_container_width=True)
+        search_clicked = st.button("Search", width='stretch')
     with c_s2:
-        show_all = st.button("Show All", use_container_width=True)
+        show_all = st.button("Show All", width='stretch')
     if show_all:
         st.session_state.browse_term = ""
     elif search_clicked:
@@ -1380,7 +1380,7 @@ def page_browse():
                   "Season", "# Seeds", "Saver Level",
                   "Perennial/Annual", "Grown By", "Year"]
 
-    st.dataframe(df, use_container_width=True, hide_index=True,
+    st.dataframe(df, width='stretch', hide_index=True,
                  height=320)
 
     st.markdown("---")
@@ -1401,19 +1401,19 @@ def page_browse():
         ba1, ba2, ba3 = st.columns(3)
         with ba1:
             if st.button("View",
-                         use_container_width=True,
+                         width='stretch',
                          type="primary" if st.session_state.browse_action == "View" else "secondary"):
                 st.session_state.browse_action = "View"
                 st.rerun()
         with ba2:
             if st.button("Edit",
-                         use_container_width=True,
+                         width='stretch',
                          type="primary" if st.session_state.browse_action == "Edit" else "secondary"):
                 st.session_state.browse_action = "Edit"
                 st.rerun()
         with ba3:
             if st.button("Duplicate",
-                         use_container_width=True,
+                         width='stretch',
                          type="primary" if st.session_state.browse_action == "Duplicate as New Record" else "secondary"):
                 st.session_state.browse_action = "Duplicate as New Record"
                 st.rerun()
@@ -1511,7 +1511,7 @@ def _browse_edit_form(row: dict, is_duplicate: bool = False):
                                value=row.get("BackgroundInfo",""), height=80,
                                help="Max 300 chars for label printing", max_chars=300)
 
-        if st.form_submit_button("Save Changes", use_container_width=True):
+        if st.form_submit_button("Save Changes", width='stretch'):
             db_update(fn, {
                 "Family": family, "Variety": variety,
                 "SeedSource": source, "Comments": comments,
@@ -1569,7 +1569,7 @@ def _browse_duplicate_form(source_row: dict):
         bg_info = st.text_area("Background Info",
                                value=source_row.get("BackgroundInfo",""), height=80)
 
-        if st.form_submit_button("Save as New Record", use_container_width=True):
+        if st.form_submit_button("Save as New Record", width='stretch'):
             fn = int(fn)
             _conn = get_pg_conn()
             _cur  = _conn.cursor()
@@ -1633,7 +1633,7 @@ def page_add():
                                help="Maximum 300 characters for label printing",
                                max_chars=300)
 
-        submitted = st.form_submit_button("Save Seed", use_container_width=True)
+        submitted = st.form_submit_button("Save Seed", width='stretch')
 
     if submitted:
         fn = int(fn)
@@ -1674,10 +1674,10 @@ def page_remove():
                          key="remove_search")
     c_r1, c_r2 = st.columns(2)
     with c_r1:
-        if st.button("Search", use_container_width=True):
+        if st.button("Search", width='stretch'):
             st.session_state.remove_term = term
     with c_r2:
-        if st.button("Show All", use_container_width=True):
+        if st.button("Show All", width='stretch'):
             st.session_state.remove_term = ""
 
     active_term = st.session_state.get("remove_term", "")
@@ -1701,7 +1701,7 @@ def page_remove():
 
     edited = st.data_editor(
         df,
-        use_container_width=True,
+        width='stretch',
         hide_index=True,
         height=380,
         column_config={
@@ -1726,7 +1726,7 @@ def page_remove():
             key="remove_confirm")
         if confirm:
             if st.button(f"Delete {n} Selected Record(s)",
-                         type="primary", use_container_width=True):
+                         type="primary", width='stretch'):
                 db_delete(selected_fns)
                 st.success(f"✅ {n} record(s) deleted.")
                 show_download_bar()
@@ -1777,7 +1777,7 @@ def page_labels():
         gen_clicked = st.button(
             "Generate PDF",
             type="primary",
-            use_container_width=True,
+            width='stretch',
             disabled=(n_seeds == 0),
             key="gen_pdf_btn")
     with btn2:
@@ -1787,16 +1787,16 @@ def page_labels():
                 data=st.session_state.label_pdf_bytes,
                 file_name="seed_labels.pdf",
                 mime="application/pdf",
-                use_container_width=True,
+                width='stretch',
                 key="dl_pdf_btn")
         else:
             st.button("Download PDF", disabled=True,
-                      use_container_width=True, key="dl_pdf_btn_off")
+                      width='stretch', key="dl_pdf_btn_off")
     with btn3:
         bg_active = st.session_state.label_include_bg
         if st.button(
                 "BG: ON" if bg_active else "BG: OFF",
-                use_container_width=True,
+                width='stretch',
                 type="primary" if bg_active else "secondary",
                 key="bg_toggle"):
             st.session_state.label_include_bg = not bg_active
@@ -1831,23 +1831,23 @@ def page_labels():
                          key="label_search")
     sa, sb, sc, sd = st.columns(4)
     with sa:
-        if st.button("Search", use_container_width=True, key="lbl_srch"):
+        if st.button("Search", width='stretch', key="lbl_srch"):
             st.session_state.label_term      = term
             st.session_state.label_pdf_bytes = None
             st.rerun()
     with sb:
-        if st.button("Load All", use_container_width=True, key="lbl_all"):
+        if st.button("Load All", width='stretch', key="lbl_all"):
             st.session_state.label_term      = ""
             st.session_state.label_pdf_bytes = None
             st.rerun()
     with sc:
-        if st.button("Set All to 1", use_container_width=True, key="lbl_set1"):
+        if st.button("Set All to 1", width='stretch', key="lbl_set1"):
             for r in rows:
                 st.session_state.label_qtys[int(r["FileNumber"])] = 1
             st.session_state.label_pdf_bytes = None
             st.rerun()
     with sd:
-        if st.button("Clear All", use_container_width=True, key="lbl_clr"):
+        if st.button("Clear All", width='stretch', key="lbl_clr"):
             st.session_state.label_qtys      = {}
             st.session_state.label_pdf_bytes = None
             st.rerun()
@@ -1913,7 +1913,7 @@ def page_admin():
                     f"**{u['full_name']}**  \n{u['email']}  \n"
                     f"*Registered: {str(u.get('created_at',''))[:10]}*")
                 if c2.button("Approve", key=f"apr_{u['id']}",
-                             use_container_width=True, type="primary"):
+                             width='stretch', type="primary"):
                     admin_approve(u["id"])
                     st.session_state["current_page"] = "admin"
                     # Notify user by email
@@ -1936,7 +1936,7 @@ def page_admin():
                         pass
                     st.rerun()
                 if c3.button("Deny", key=f"deny_{u['id']}",
-                             use_container_width=True):
+                             width='stretch'):
                     admin_delete_user(u["id"])
                     st.session_state["current_page"] = "admin"
                     st.rerun()
@@ -1954,7 +1954,7 @@ def page_admin():
             "Registered": str(u.get("created_at",""))[:10],
             "Last Login":  str(u.get("last_login",""))[:10] if u.get("last_login") else "Never",
         } for u in all_users])
-        st.dataframe(df, use_container_width=True, hide_index=True)
+        st.dataframe(df, width='stretch', hide_index=True)
 
         st.markdown("---")
         st.markdown("#### Manage User")
@@ -1964,11 +1964,11 @@ def page_admin():
         if sel_user:
             c1, c2, c3 = st.columns(3)
             if sel_user["is_approved"]:
-                if c1.button("Revoke Access", use_container_width=True):
+                if c1.button("Revoke Access", width='stretch'):
                     admin_revoke(sel_user["id"])
                     st.rerun()
             else:
-                if c1.button("Approve", use_container_width=True,
+                if c1.button("Approve", width='stretch',
                              type="primary"):
                     admin_approve(sel_user["id"])
                     st.rerun()
@@ -1976,7 +1976,7 @@ def page_admin():
                 "Role", ["user","admin"],
                 index=0 if sel_user["role"] == "user" else 1,
                 key="role_sel")
-            if c2.button("Set Role", use_container_width=True):
+            if c2.button("Set Role", width='stretch'):
                 conn = get_pg_conn()
                 cur  = conn.cursor()
                 cur.execute(
@@ -1984,7 +1984,7 @@ def page_admin():
                     (new_role, sel_user["id"]))
                 conn.commit(); cur.close(); conn.close()
                 st.rerun()
-            if c3.button("Delete User", use_container_width=True):
+            if c3.button("Delete User", width='stretch'):
                 if sel_user["role"] != "admin":
                     admin_delete_user(sel_user["id"])
                     st.rerun()
@@ -2024,7 +2024,7 @@ def sidebar_nav():
         if urole == "admin":
             is_on_admin = st.session_state.get("current_page") == "admin"
             if st.button("Admin Panel" + (" (active)" if is_on_admin else ""),
-                         use_container_width=True):
+                         width='stretch'):
                 st.session_state["current_page"] = "admin"
                 st.rerun()
 
@@ -2034,7 +2034,7 @@ def sidebar_nav():
             unsafe_allow_html=True,
         )
         st.markdown("---")
-        if st.button("🔒 Log Out", use_container_width=True):
+        if st.button("🔒 Log Out", width='stretch'):
             for k in ["authenticated","user_email","user_name",
                       "user_role","auth_step","auth_email"]:
                 st.session_state.pop(k, None)
