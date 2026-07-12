@@ -390,23 +390,23 @@ import streamlit as st
 import psycopg2
 
 def get_pg_conn():
-    """Return a psycopg2 connection using DATABASE_URL."""
     import psycopg2
     import psycopg2.extras
 
     url = st.secrets["DATABASE_URL"]
 
-    conn = psycopg2.connect(
-        url,
-        connect_timeout=10,
-        cursor_factory=psycopg2.extras.RealDictCursor,
-    )
-    conn.autocommit = False
-    return conn
+    try:
+        conn = psycopg2.connect(
+            url,
+            connect_timeout=10,
+            cursor_factory=psycopg2.extras.RealDictCursor,
+        )
+        conn.autocommit = False
+        return conn
 
-except Exception as e:
-    st.exception(e)
-    raise
+    except Exception as e:
+        st.exception(e)
+        raise
     
 CREATE_USERS_SQL = """
     CREATE TABLE IF NOT EXISTS app_users (
