@@ -748,19 +748,28 @@ def _send_verification_email(to_email: str, code: str) -> tuple:
 def user_login(email: str, password: str) -> dict | None:
     """Return user dict if credentials valid, else None."""
     conn = get_pg_conn()
-    cur  = conn.cursor()
+    cur = conn.cursor()
+
     cur.execute(
-        "SELECT * FROM app_users WHERE email = %s", (email.lower().strip(),))
+        "SELECT * FROM app_users WHERE email = %s",
+        (email.lower().strip(),)
+    )
+
     row = cur.fetchone()
+
     cur.close()
     conn.close()
-    if not row:
+
+    if row is None:
         return None
-  
+
+    # Convert the returned row to a normal dictionary
+    user = dict(row)
+
     if not _check_password_hash(password, user["password_hash"]):
         return None
-    return user
 
+    return user
 
 def user_register(email: str, full_name: str, password: str) -> str:
     """
