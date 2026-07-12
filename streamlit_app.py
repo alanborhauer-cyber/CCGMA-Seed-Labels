@@ -751,7 +751,9 @@ def user_login(email: str, password: str) -> dict | None:
     conn.close()
     if not row:
         return None
-    user = dict(row)
+    st.write("row type:", type(row))
+    st.write("row value:", row)
+    st.stop()
     if not _check_password_hash(password, user["password_hash"]):
         return None
     return user
