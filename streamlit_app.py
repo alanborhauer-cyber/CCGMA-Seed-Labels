@@ -387,15 +387,22 @@ CREATE_SQL = """
 # -------------------------------------------------------------
 
 def get_pg_conn():
-    """Return a psycopg2 connection using st.secrets["DATABASE_URL"]."""
     import psycopg2
     import psycopg2.extras
+
     url = st.secrets["DATABASE_URL"]
-   
-    conn = psycopg2.connect(url, cursor_factory=psycopg2.extras.RealDictCursor)
+
+    st.write("DATABASE_URL being used:")
+    st.code(url)
+
+    st.stop()
+
+    conn = psycopg2.connect(
+        url,
+        cursor_factory=psycopg2.extras.RealDictCursor
+    )
     conn.autocommit = False
     return conn
-
 
 CREATE_USERS_SQL = """
     CREATE TABLE IF NOT EXISTS app_users (
