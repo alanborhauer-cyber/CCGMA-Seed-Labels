@@ -387,13 +387,14 @@ CREATE_SQL = """
 # -------------------------------------------------------------
 
 def get_pg_conn():
-    import streamlit as st
-
-    st.write("DATABASE_URL currently in use:")
-    st.code(st.secrets["DATABASE_URL"])
-
-    st.stop()
-
+    """Return a psycopg2 connection using st.secrets["DATABASE_URL"]."""
+    import psycopg2
+    import psycopg2.extras
+    url = st.secrets["DATABASE_URL"]
+    conn = psycopg2.connect(url, cursor_factory=psycopg2.extras.RealDictCursor)
+    conn.autocommit = False
+    return conn
+    
 CREATE_USERS_SQL = """
     CREATE TABLE IF NOT EXISTS app_users (
         id             SERIAL PRIMARY KEY,
