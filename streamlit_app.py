@@ -1063,8 +1063,14 @@ def generate_labels_pdf(label_data: list,
         for slot, (row, is_bg) in enumerate(page_labels):
             col_num = slot % COLS
             row_num = slot // COLS
-            lx = LEFT_X if col_num == 0 else RIGHT_X
-            ly = PAGE_H - MARGIN_TOP - (row_num + 1) * LABEL_H
+            COLUMN_PITCH = LABEL_W + GUTTER
+
+            lx = LEFT_X + (col_num * COLUMN_PITCH)
+            lx = round(lx, 3)
+            ly = round(
+                PAGE_H - MARGIN_TOP - (row_num + 1) * LABEL_H,
+                3
+            )
 
             # Extract fields (needed for both label types)
             family   = (row.get("Family")          or "").strip()
