@@ -1071,12 +1071,11 @@ def generate_labels_pdf(label_data: list,
             row_num = slot // COLS
             COLUMN_PITCH = LABEL_W + GUTTER
 
-            lx = LEFT_X + (col_num * COLUMN_PITCH)
+            lx = LEFT_X + (col_num * COLUMN_PITCH) + X_OFFSET
+            ly = PAGE_H - MARGIN_TOP - (row_num + 1) * LABEL_H + Y_OFFSET
+
             lx = round(lx, 3)
-            ly = round(
-                PAGE_H - MARGIN_TOP - (row_num + 1) * LABEL_H,
-                3
-            )
+            ly = round(ly, 3)
 
             # Extract fields (needed for both label types)
             family   = (row.get("Family")          or "").strip()
