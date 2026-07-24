@@ -1013,26 +1013,12 @@ def generate_labels_pdf(label_data: list,
                 labels.append((row, True))
     if not labels:
         return None
-# -------------------------------------------------------
-# Printer Calibration
-# -------------------------------------------------------
 
+                            # Printer calibration
     X_OFFSET = 0.00 * inch
     Y_OFFSET = 0.00 * inch
-
-    COLUMN_PITCH = LABEL_W + GUTTER
-
-    lx = LEFT_X + (col_num * COLUMN_PITCH) + X_OFFSET
-
-    ly = (
-        PAGE_H
-        - MARGIN_TOP
-        - (row_num + 1) * LABEL_H
-        + Y_OFFSET
-    )
-
-    lx = round(lx, 3)
-    ly = round(ly, 3)
+    
+    COLUMN_PITCH = LABEL_W + GUTTER 
 
     # Avery 94207 exact dimensions
     PAGE_W, PAGE_H  = letter              # 8.5 x 11 inches
