@@ -1050,6 +1050,50 @@ def generate_labels_docx(label_data, include_background=False):
 
     if not labels:
         return None
+
+        # ----------------------------------------------------------
+    # Helpers
+    # ----------------------------------------------------------
+
+    def cell_width(cell, width):
+        cell.width = Inches(width)
+
+    def row_height(row, height):
+        trPr = row._tr.get_or_add_trPr()
+
+        h = OxmlElement('w:trHeight')
+        h.set(qn('w:val'), str(int(height * 1440)))
+        h.set(qn('w:hRule'), 'exact')
+
+        trPr.append(h)
+
+    def clear_cell(cell):
+
+        cell.text = ""
+
+        p = cell.paragraphs[0]
+
+        p.paragraph_format.space_before = Pt(0)
+        p.paragraph_format.space_after = Pt(0)
+
+        return p
+
+    def add_line(cell,
+                 text,
+                 size=9,
+                 bold=False):
+
+        p = cell.add_paragraph()
+
+        p.paragraph_format.space_before = Pt(0)
+        p.paragraph_format.space_after = Pt(0)
+
+        run = p.add_run(text)
+
+        run.bold = bold
+        run.font.size = Pt(size)
+
+        return p
     
     try:
         from reportlab.lib.pagesizes import letter
