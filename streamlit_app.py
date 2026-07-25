@@ -2016,27 +2016,28 @@ def page_labels():
         bg_active = st.session_state.label_include_bg
 
         if st.button(
-                "BG: ON" if bg_active else "BG: OFF",
-                width="stretch",
-                type="primary" if bg_active else "secondary"
-            ):
+            "BG: ON" if bg_active else "BG: OFF",
+            width="stretch",
+            type="primary" if bg_active else "secondary"
+        ):
             
         st.session_state.label_include_bg = not bg_active
         st.session_state.label_pdf_bytes = None
         st.session_state.label_docx_bytes = None
         st.rerun()
+        
         if gen_clicked:
             with st.spinner("Generating PDF..."):
                 pdf_bytes = generate_labels_pdf(
                     label_data,
                     include_background=st.session_state.label_include_bg)
-        if pdf_bytes:
-            st.session_state.label_pdf_bytes = pdf_bytes
-            pages = -(-total_labels // 10)
-            st.success(
-                f"PDF ready -- {total_labels} labels across {pages} page(s). "
-                "Print at Actual Size (100%). Click Download above.")
-            st.rerun()
+    if pdf_bytes:
+        st.session_state.label_pdf_bytes = pdf_bytes
+        pages = -(-total_labels // 10)
+        st.success(
+            f"PDF ready -- {total_labels} labels across {pages} page(s). "
+            "Print at Actual Size (100%). Click Download above.")
+        st.rerun()
 
     if gen_docx_clicked:
         with st.spinner("Generating Word document..."):
