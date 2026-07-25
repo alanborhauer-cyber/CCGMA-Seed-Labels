@@ -1025,7 +1025,7 @@ def generate_labels_pdf(label_data: list,
 
     MARGIN_TOP = 0.50 * inch
     MARGIN_LEFT = 0.25 * inch
-    MARGIN_RIGHT = 0.3 * inch
+    MARGIN_RIGHT = 0.25 * inch
 
     LABEL_W = 4.00 * inch
     LABEL_H = 2.00 * inch
@@ -1034,6 +1034,8 @@ def generate_labels_pdf(label_data: list,
 
     LEFT_X = 0.25 * inch
 
+    RIGHT_COLUMN_ADJUST = -0.015 * inch
+                            
     COLS = 2
     ROWS = 5
     PER_PAGE = COLS * ROWS
@@ -1083,6 +1085,10 @@ def generate_labels_pdf(label_data: list,
             COLUMN_PITCH = LABEL_W + GUTTER
 
             lx = LEFT_X + (col_num * COLUMN_PITCH) + X_OFFSET
+            
+            if col_num == 1:
+                lx += RIGHT_COLUMN_ADJUST
+            
             ly = PAGE_H - MARGIN_TOP - (row_num + 1) * LABEL_H + Y_OFFSET
 
             lx = round(lx, 3)
