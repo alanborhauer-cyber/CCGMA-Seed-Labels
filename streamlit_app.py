@@ -1776,7 +1776,8 @@ def page_labels():
     if "label_qtys"       not in st.session_state: st.session_state.label_qtys       = {}
     if "label_include_bg" not in st.session_state: st.session_state.label_include_bg = False
     if "label_pdf_bytes"  not in st.session_state: st.session_state.label_pdf_bytes  = None
-
+    if "label_docx_bytes" not in st.session_state: st.session_state.label_docx_bytes = None
+    
     # Fetch rows once
     rows       = db_search(st.session_state.label_term)
     row_lookup = {int(r["FileNumber"]): r for r in rows}
@@ -1800,37 +1801,76 @@ def page_labels():
         f"<b>{total_labels}</b> total labels</div>",
         unsafe_allow_html=True)
 
-    btn1, btn2, btn3 = st.columns([3, 3, 2])
+    btn1, btn2, btn3, btn4, btn5 = st.columns([2.5,2.5,2.5,2.5,1.8])
+# ----------------------------------------------------------
+# Button Row
+# ----------------------------------------------------------
+
     with btn1:
-        gen_clicked = st.button(
+        gen_pdf_clicked = st.button(
             "Generate PDF",
             type="primary",
-            width='stretch',
+            width="stretch",
             disabled=(n_seeds == 0),
-            key="gen_pdf_btn")
+            key="gen_pdf_btn"
+        )
+
     with btn2:
         if st.session_state.label_pdf_bytes:
             st.download_button(
-                label="Download seed_labels.pdf",
+                "Download PDF",
                 data=st.session_state.label_pdf_bytes,
                 file_name="seed_labels.pdf",
                 mime="application/pdf",
-                width='stretch',
-                key="dl_pdf_btn")
+                width="stretch",
+                key="download_pdf_btn"
+            )
         else:
-            st.button("Download PDF", disabled=True,
-                      width='stretch', key="dl_pdf_btn_off")
-    with btn3:
-        bg_active = st.session_state.label_include_bg
-        if st.button(
-                "BG: ON" if bg_active else "BG: OFF",
-                width='stretch',
-                type="primary" if bg_active else "secondary",
-                key="bg_toggle"):
-            st.session_state.label_include_bg = not bg_active
-            st.session_state.label_pdf_bytes  = None
-            st.rerun()
+            st.button(
+                "Download PDF",
+                disabled=True,
+                width="stretch"
+            )
 
+    with btn3:
+        gen_docx_clicked = st.button(
+            "Generate Word",
+            type="secondary",
+            width="stretch",
+            disabled=(n_seeds == 0),
+            key="gen_docx_btn"
+        )
+
+    with btn4:
+        if st.session_state.label_docx_bytes:
+            st.download_button(
+                "Download Word",
+                data=st.session_state.label_docx_bytes,
+                file_name="seed_labels.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                width="stretch",
+                key="download_docx_btn"
+            )
+        else:
+            st.button(
+                "Download Word",
+                disabled=True,
+                width="stretch"
+            )
+
+    with btn5:
+        bg_active = st.session_state.label_include_bg
+
+        if st.button(
+            "BG: ON" if bg_active else "BG: OFF",
+            width="stretch",
+            type="primary" if bg_active else "secondary"
+        ):
+            
+        st.session_state.label_include_bg = not bg_active
+        st.session_state.label_pdf_bytes = None
+        st.session_state.label_docx_bytes = None
+        st.rerun()
     if gen_clicked:
         with st.spinner("Generating PDF..."):
             pdf_bytes = generate_labels_pdf(
