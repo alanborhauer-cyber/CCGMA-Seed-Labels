@@ -1034,7 +1034,7 @@ def generate_labels_pdf(label_data: list,
 
     LEFT_X = 0.25 * inch
 
-    RIGHT_COLUMN_ADJUST = -0.015 * inch
+    RIGHT_COLUMN_ADJUST = 0.035 * inch
                             
     COLS = 2
     ROWS = 5
