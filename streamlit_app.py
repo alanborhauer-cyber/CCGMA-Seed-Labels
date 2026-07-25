@@ -16,6 +16,14 @@ import smtplib
 from email.mime.text import MIMEText
 from datetime import datetime, timedelta
 import streamlit as st
+from io import BytesIO
+from docx import Document
+from docx.shared import Inches
+from docx.shared import Pt
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.enum.table import WD_TABLE_ALIGNMENT
+from docx.oxml.shared import OxmlElement
+from docx.oxml.ns import qn
 
 # -------------------------------------------------------------
 # PAGE CONFIG (must be first Streamlit call)
