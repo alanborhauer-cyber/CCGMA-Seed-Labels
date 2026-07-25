@@ -1078,6 +1078,56 @@ def generate_labels_docx(label_data, include_background=False):
 
         return p
 
+    # ----------------------------------------------------------
+    # 10 labels/page
+    # ----------------------------------------------------------
+
+    PER_PAGE = 10
+
+    for start in range(0, len(labels), PER_PAGE):
+
+        page = labels[start:start + PER_PAGE]
+
+        table = document.add_table(
+            rows=5,
+            cols=2
+        )
+
+        table.alignment = WD_TABLE_ALIGNMENT.CENTER
+        table.autofit = False
+
+        for c in table.columns:
+
+            c.width = Inches(4.0)
+
+        for r in table.rows:
+
+            row_height(r, 2.0)
+        
+        for i, (row, is_bg) in enumerate(page):
+
+            rr = i // 2
+            cc = i % 2
+
+            cell = table.cell(rr, cc)
+
+            cell_width(cell, 4.0)
+
+            cell.text = ""
+
+            family = (row.get("Family") or "").strip()
+            variety = (row.get("Variety") or "").strip()
+            season = (row.get("Season") or "").strip()
+            edible = (row.get("Edible") or "").strip()
+            year = (row.get("Year") or "").strip()
+            num = (row.get("NumSeeds") or "").strip()
+            saver = (row.get("SeedSaverLevel") or "").strip()
+            germ = (row.get("Germination") or "").strip()
+            soil = (row.get("SoilTemperature") or "").strip()
+            hybrid = (row.get("HybridDoNotSave") or "").strip()
+            comments = (row.get("Comments") or "").strip()
+            bg = (row.get("BackgroundInfo") or "").strip()
+    
     def add_line(cell,
                  text,
                  size=9,
