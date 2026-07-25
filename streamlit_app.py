@@ -1000,22 +1000,56 @@ def generate_labels_pdf(label_data: list,
     Hybrid warning is printed on every label where HybridDoNotSave is set.
     """
 def generate_labels_docx(label_data, include_background=False):
+def generate_labels_docx(label_data, include_background=False):
     """
-    Temporary placeholder.
-    Part 2 will build the complete Avery 94207 document.
+    Generate Avery 94207 labels as a native Microsoft Word document.
+    Returns DOCX bytes.
     """
-    doc = Document()
-    doc.add_heading(
-        "CCMGA Seed Library",
-        level=1
-    )
-    doc.add_paragraph(
-        "Word label generation is installed correctly."
-    )
-    output = BytesIO()
-    doc.save(output)
-    output.seek(0)
-    return output.getvalue()
+
+    from io import BytesIO
+    from docx import Document
+    from docx.shared import Inches, Pt
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.enum.table import WD_TABLE_ALIGNMENT
+    from docx.enum.section import WD_SECTION
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+
+    document = Document()
+
+    # ----------------------------------------------------------
+    # Page setup
+    # ----------------------------------------------------------
+
+    section = document.sections[0]
+
+    section.page_width = Inches(8.5)
+    section.page_height = Inches(11)
+
+    section.left_margin = Inches(.25)
+    section.right_margin = Inches(.25)
+
+    section.top_margin = Inches(.50)
+    section.bottom_margin = Inches(.50)
+
+    # ----------------------------------------------------------
+    # Build list of labels
+    # ----------------------------------------------------------
+
+    labels = []
+
+    for row, qty in label_data:
+
+        for _ in range(qty):
+            labels.append((row, False))
+
+        if include_background and (row.get("BackgroundInfo") or "").strip():
+
+            for _ in range(qty):
+                labels.append((row, True))
+
+    if not labels:
+        return None
     
     try:
         from reportlab.lib.pagesizes import letter
