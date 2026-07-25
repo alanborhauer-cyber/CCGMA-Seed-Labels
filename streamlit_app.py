@@ -1884,6 +1884,22 @@ def page_labels():
                 "Print at Actual Size (100%). Click Download above.")
             st.rerun()
 
+    if gen_docx_clicked:
+        with st.spinner("Generating Word document..."):
+            docx_bytes = generate_labels_docx(
+                label_data,
+                include_background=st.session_state.label_include_bg
+            )
+        if docx_bytes:
+            st.session_state.label_docx_bytes = docx_bytes
+            pages = -(-total_labels // 10)
+            st.success(
+                f"Word document ready — {total_labels} labels across "
+                f"{pages} page(s)."
+            )
+
+            st.rerun()
+    
     if st.session_state.label_pdf_bytes and not gen_clicked:
         pages = -(-total_labels // 10)
         st.caption(f"Last PDF: {total_labels} labels / {pages} page(s). "
