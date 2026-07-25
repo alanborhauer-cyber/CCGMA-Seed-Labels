@@ -2016,9 +2016,9 @@ def page_labels():
         bg_active = st.session_state.label_include_bg
 
         if st.button(
-            "BG: ON" if bg_active else "BG: OFF",
-            width="stretch",
-            type="primary" if bg_active else "secondary"
+                "BG: ON" if bg_active else "BG: OFF",
+                width="stretch",
+                type="primary" if bg_active else "secondary"
             ):
             
         st.session_state.label_include_bg = not bg_active
