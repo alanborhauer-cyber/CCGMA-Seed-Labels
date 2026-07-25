@@ -2015,11 +2015,11 @@ def page_labels():
     with btn5:
         bg_active = st.session_state.label_include_bg
 
-        if st.button(
-                "BG: ON" if bg_active else "BG: OFF",
-                width="stretch",
-                type="primary" if bg_active else "secondary"
-            ):
+    if st.button(
+        "BG: ON" if bg_active else "BG: OFF",
+        width="stretch",
+        type="primary" if bg_active else "secondary"
+        ):
             
         st.session_state.label_include_bg = not bg_active
         st.session_state.label_pdf_bytes = None
