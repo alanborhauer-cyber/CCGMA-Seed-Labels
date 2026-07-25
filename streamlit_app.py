@@ -1025,7 +1025,7 @@ def generate_labels_pdf(label_data: list,
 
     MARGIN_TOP = 0.50 * inch
     MARGIN_LEFT = 0.25 * inch
-    MARGIN_RIGHT = 0.25 * inch
+    MARGIN_RIGHT = 0.3 * inch
 
     LABEL_W = 4.00 * inch
     LABEL_H = 2.00 * inch
