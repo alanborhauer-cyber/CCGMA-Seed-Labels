@@ -1000,7 +1000,7 @@ def generate_labels_pdf(label_data: list,
     Hybrid warning is printed on every label where HybridDoNotSave is set.
     """
 def generate_labels_docx(label_data, include_background=False):
-def generate_labels_docx(label_data, include_background=False):
+
     """
     Generate Avery 94207 labels as a native Microsoft Word document.
     Returns DOCX bytes.
