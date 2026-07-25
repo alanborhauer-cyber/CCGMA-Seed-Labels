@@ -999,6 +999,24 @@ def generate_labels_pdf(label_data: list,
     for each seed that has BackgroundInfo text.
     Hybrid warning is printed on every label where HybridDoNotSave is set.
     """
+def generate_labels_docx(label_data, include_background=False):
+    """
+    Temporary placeholder.
+    Part 2 will build the complete Avery 94207 document.
+    """
+    doc = Document()
+    doc.add_heading(
+        "CCMGA Seed Library",
+        level=1
+    )
+    doc.add_paragraph(
+        "Word label generation is installed correctly."
+    )
+    output = BytesIO()
+    doc.save(output)
+    output.seek(0)
+    return output.getvalue()
+    
     try:
         from reportlab.lib.pagesizes import letter
         from reportlab.lib.units    import inch
