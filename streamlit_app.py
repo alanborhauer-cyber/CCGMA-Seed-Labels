@@ -1026,8 +1026,8 @@ def generate_labels_docx(label_data, include_background=False):
     section.page_width = Inches(8.5)
     section.page_height = Inches(11)
 
-    section.left_margin = Inches(.25)
-    section.right_margin = Inches(.25)
+    section.left_margin = Inches(.15625)
+    section.right_margin = Inches(.15625)
 
     section.top_margin = Inches(.50)
     section.bottom_margin = Inches(.50)
