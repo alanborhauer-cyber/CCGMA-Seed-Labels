@@ -2026,7 +2026,7 @@ def page_labels():
             st.session_state.label_docx_bytes = None
             st.rerun()
         
-    if gen_clicked:
+    if gen_pdf_clicked:
         with st.spinner("Generating PDF..."):
             pdf_bytes = generate_labels_pdf(
                 label_data,
