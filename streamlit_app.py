@@ -2039,6 +2039,8 @@ def page_labels():
                 "Print at Actual Size (100%). Click Download above.")
             st.rerun()
 
+    from docx_labels import generate_labels_docx
+    
     if gen_docx_clicked:
         with st.spinner("Generating Word document..."):
             docx_bytes = generate_labels_docx(
