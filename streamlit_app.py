@@ -2021,10 +2021,10 @@ def page_labels():
             type="primary" if bg_active else "secondary"
         ):
             
-        st.session_state.label_include_bg = not bg_active
-        st.session_state.label_pdf_bytes = None
-        st.session_state.label_docx_bytes = None
-        st.rerun()
+            st.session_state.label_include_bg = not bg_active
+            st.session_state.label_pdf_bytes = None
+            st.session_state.label_docx_bytes = None
+            st.rerun()
         
     if gen_clicked:
         with st.spinner("Generating PDF..."):
