@@ -992,7 +992,7 @@ Login to admin panel.
     except:
 
         pass
-ef generate_labels_pdf(label_data: list,
+def generate_labels_pdf(label_data: list,
                         include_background: bool = False) -> bytes | None:
     """Returns PDF bytes or None on error.
     If include_background=True, appends a separate background-info label
