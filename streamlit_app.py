@@ -1026,8 +1026,6 @@ def generate_labels_pdf(label_data: list,
     X_OFFSET = 0.00 * inch
     Y_OFFSET = 0.00 * inch
     
-    COLUMN_PITCH = LABEL_W + GUTTER 
-
     # Avery 94207 geometry
     PAGE_W, PAGE_H = letter
 
