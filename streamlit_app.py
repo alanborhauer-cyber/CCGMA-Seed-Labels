@@ -1091,7 +1091,7 @@ def generate_labels_pdf(label_data: list,
             
             # Fine-tune only the right column
             if col_num == 1:
-                lx += RIGHT_COLUMN_ADJUST = 0.3 * inch
+                lx += RIGHT_COLUMN_ADJUST
             
             # Compute Y position
             ly = PAGE_H - MARGIN_TOP - (row_num + 1) * LABEL_H + Y_OFFSET
