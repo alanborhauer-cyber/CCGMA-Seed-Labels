@@ -1028,18 +1028,26 @@ def generate_labels_pdf(label_data: list,
     
     COLUMN_PITCH = LABEL_W + GUTTER 
 
-    # Avery 94207 exact dimensions
-    PAGE_W, PAGE_H  = letter              # 8.5 x 11 inches
-    MARGIN_TOP      = 0.50 * inch
-    MARGIN_LEFT     = 0.25 * inch
-    MARGIN_RIGHT    = 0.25 * inch
-    LABEL_W         = 4.00 * inch         # hard-coded, not calculated
-    LABEL_H         = 2.00 * inch
-    GUTTER          = 0.125 * inch
-    LEFT_X          = 0.25 * inch         # left edge of col 0
-    RIGHT_X         = 4.375 * inch        # 0.25 + 4.00 + 0.125
-    COLS, ROWS      = 2, 5
-    PER_PAGE        = COLS * ROWS
+    # Avery 94207 geometry
+    PAGE_W, PAGE_H = letter
+
+    MARGIN_TOP = 0.50 * inch
+    LEFT_X = 0.25 * inch
+
+    LABEL_W = 4.00 * inch
+    LABEL_H = 2.00 * inch
+    
+    GUTTER = 0.125 * inch
+    
+    # Distance between label origins
+    COLUMN_PITCH = LABEL_W + GUTTER
+    
+    # Fine-tune only the right column
+    RIGHT_COLUMN_ADJUST = -0.015 * inch
+    
+    COLS = 2
+    ROWS = 5
+    PER_PAGE = COLS * ROWS
 
     PAD_L, PAD_R, PAD_T, PAD_B = 4, 4, 3, 3
     TITLE_H         = 24
@@ -1077,11 +1085,18 @@ def generate_labels_pdf(label_data: list,
         for slot, (row, is_bg) in enumerate(page_labels):
             col_num = slot % COLS
             row_num = slot // COLS
-            COLUMN_PITCH = LABEL_W + GUTTER
 
+            # Compute X position
             lx = LEFT_X + (col_num * COLUMN_PITCH) + X_OFFSET
+            
+            # Fine-tune only the right column
+            if col_num == 1:
+                lx += RIGHT_COLUMN_ADJUST = 0.3 * inch
+            
+            # Compute Y position
             ly = PAGE_H - MARGIN_TOP - (row_num + 1) * LABEL_H + Y_OFFSET
-
+            
+            # Round coordinates
             lx = round(lx, 3)
             ly = round(ly, 3)
 
