@@ -24,6 +24,7 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.oxml.shared import OxmlElement
 from docx.oxml.ns import qn
+from docx_labels import generate_labels_docx
 
 # -------------------------------------------------------------
 # PAGE CONFIG (must be first Streamlit call)
@@ -1890,8 +1891,7 @@ def page_labels():
                 "Print at Actual Size (100%). Click Download above.")
             st.rerun()
 
-    from docx_labels import generate_labels_docx
-    
+        
     if gen_docx_clicked:
         with st.spinner("Generating Word document..."):
             docx_bytes = generate_labels_docx(
@@ -1908,7 +1908,7 @@ def page_labels():
 
             st.rerun()
     
-    if st.session_state.label_pdf_bytes and not gen_clicked:
+    if st.session_state.label_pdf_bytes and not gen_pdf_clicked:
         pages = -(-total_labels // 10)
         st.caption(f"Last PDF: {total_labels} labels / {pages} page(s). "
                    "Re-generate if selections changed.")
