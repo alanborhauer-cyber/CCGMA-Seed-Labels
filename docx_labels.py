@@ -429,12 +429,12 @@ def _draw_seed_label(cell, row):
     # Divider
     # ------------------------------------------------------------------
 
-    # p = _new_paragraph(cell)
+    p = _new_paragraph(cell)
 
-    # run = p.add_run(
-    #    "────────────────────────────────"
+    run = p.add_run(
+        "────────────────────────────────"
     )
-    #
+    
     run.font.size = Pt(6)
     run.font.color.rgb = BLACK
 
