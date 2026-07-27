@@ -1042,7 +1042,7 @@ def generate_labels_pdf(label_data: list,
     COLUMN_PITCH = LABEL_W + GUTTER
     
     # Fine-tune only the right column
-    RIGHT_COLUMN_ADJUST = -0.015 * inch
+    RIGHT_COLUMN_ADJUST = 0.2 * inch
     
     COLS = 2
     ROWS = 5
