@@ -1229,6 +1229,7 @@ def generate_labels_pdf(label_data: list,
         page_idx += 1
 
     c.save()
+    buf.seek(0)
     return buf.getvalue()
 
 
