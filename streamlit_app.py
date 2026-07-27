@@ -992,14 +992,13 @@ Login to admin panel.
     except:
 
         pass
-def generate_labels_pdf(label_data: list,
+ef generate_labels_pdf(label_data: list,
                         include_background: bool = False) -> bytes | None:
     """Returns PDF bytes or None on error.
     If include_background=True, appends a separate background-info label
     for each seed that has BackgroundInfo text.
     Hybrid warning is printed on every label where HybridDoNotSave is set.
     """
-    
     try:
         from reportlab.lib.pagesizes import letter
         from reportlab.lib.units    import inch
@@ -1027,33 +1026,20 @@ def generate_labels_pdf(label_data: list,
     X_OFFSET = 0.00 * inch
     Y_OFFSET = 0.00 * inch
     
-   
+    COLUMN_PITCH = LABEL_W + GUTTER 
 
-# Avery 94207 dimensions
-    PAGE_W, PAGE_H = letter
-
-    MARGIN_TOP = 0.50 * inch
-    MARGIN_LEFT = 0.25 * inch
-    MARGIN_RIGHT = 0.25 * inch
-
-    LABEL_W = 4.00 * inch
-    LABEL_H = 2.00 * inch
-
-    GUTTER = 0.125 * inch
-
-    LEFT_X = 0.25 * inch
-
-    RIGHT_COLUMN_ADJUST = 0.15 * inch
-                            
-    COLS = 2
-    ROWS = 5
-    PER_PAGE = COLS * ROWS
-
-    # Printer calibration
-    X_OFFSET = 0.00 * inch
-    Y_OFFSET = 0.00 * inch
-
-    COLUMN_PITCH = LABEL_W + GUTTER
+    # Avery 94207 exact dimensions
+    PAGE_W, PAGE_H  = letter              # 8.5 x 11 inches
+    MARGIN_TOP      = 0.50 * inch
+    MARGIN_LEFT     = 0.25 * inch
+    MARGIN_RIGHT    = 0.25 * inch
+    LABEL_W         = 4.00 * inch         # hard-coded, not calculated
+    LABEL_H         = 2.00 * inch
+    GUTTER          = 0.125 * inch
+    LEFT_X          = 0.25 * inch         # left edge of col 0
+    RIGHT_X         = 4.375 * inch        # 0.25 + 4.00 + 0.125
+    COLS, ROWS      = 2, 5
+    PER_PAGE        = COLS * ROWS
 
     PAD_L, PAD_R, PAD_T, PAD_B = 4, 4, 3, 3
     TITLE_H         = 24
@@ -1094,10 +1080,6 @@ def generate_labels_pdf(label_data: list,
             COLUMN_PITCH = LABEL_W + GUTTER
 
             lx = LEFT_X + (col_num * COLUMN_PITCH) + X_OFFSET
-            
-            if col_num == 1:
-                lx += RIGHT_COLUMN_ADJUST
-            
             ly = PAGE_H - MARGIN_TOP - (row_num + 1) * LABEL_H + Y_OFFSET
 
             lx = round(lx, 3)
