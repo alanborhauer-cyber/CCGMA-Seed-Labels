@@ -1,97 +1,114 @@
-"""
-docx_labels.py
-
-Native Microsoft Word label generator for the
-Cochise County Master Gardener Association Seed Library.
-
-Designed as a drop-in companion to generate_labels_pdf().
-
-Requires:
-    python-docx
-
-Returns:
-    bytes suitable for st.download_button()
-"""
+##############################################################################
+# docx_labels.py
+#
+# Microsoft Word label generator
+# Avery 94207 (2" × 4")
+#
+# Cochise County Master Gardener Association
+##############################################################################
 
 from io import BytesIO
 
 from docx import Document
-from docx.shared import Inches, Pt, RGBColor
-from docx.enum.text import (
-    WD_ALIGN_PARAGRAPH,
-    WD_BREAK,
-)
+from docx.enum.section import WD_SECTION
 from docx.enum.table import (
     WD_TABLE_ALIGNMENT,
     WD_CELL_VERTICAL_ALIGNMENT,
+    WD_ROW_HEIGHT_RULE,
 )
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.shared import Inches, Pt, RGBColor
+
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 
 
 ##############################################################################
-# Avery 94207 constants
+# Colors
 ##############################################################################
 
-PAGE_WIDTH = 8.5
+GREEN = RGBColor(0, 102, 51)
+RED   = RGBColor(180, 0, 0)
+BLACK = RGBColor(0, 0, 0)
+
+
+##############################################################################
+# Font sizes
+##############################################################################
+
+TITLE_SIZE   = 10
+FAMILY_SIZE  = 11
+VARIETY_SIZE = 10
+BODY_SIZE    = 8
+SMALL_SIZE   = 7
+TINY_SIZE    = 6
+
+
+##############################################################################
+# Avery 94207 geometry
+##############################################################################
+
+PAGE_WIDTH  = 8.5
 PAGE_HEIGHT = 11.0
 
-LEFT_MARGIN = 0.25
-RIGHT_MARGIN = 0.25
-TOP_MARGIN = 0.50
+LEFT_MARGIN   = 0.25
+RIGHT_MARGIN  = 0.25
+TOP_MARGIN    = 0.50
 BOTTOM_MARGIN = 0.50
 
-LABEL_WIDTH = 4.0
-LABEL_HEIGHT = 2.0
+LABEL_WIDTH  = 4.00
+LABEL_HEIGHT = 2.00
+
+COLUMN_GAP = 0.125
 
 ROWS = 5
 COLS = 2
 LABELS_PER_PAGE = ROWS * COLS
 
-##############################################################################
-# Fonts
-##############################################################################
-
-TITLE_SIZE = 10
-FAMILY_SIZE = 10
-VARIETY_SIZE = 10
-BODY_SIZE = 9
-SMALL_SIZE = 8
-TINY_SIZE = 7
-
-GREEN = RGBColor(34, 85, 34)
-RED = RGBColor(180, 0, 0)
-BLACK = RGBColor(0, 0, 0)
 
 ##############################################################################
-# XML helper functions
+# XML helpers
 ##############################################################################
-
-def _set_row_height(row, height_inches):
-    """
-    Force an exact row height.
-    """
-    trPr = row._tr.get_or_add_trPr()
-
-    h = OxmlElement("w:trHeight")
-    h.set(qn("w:val"), str(int(height_inches * 1440)))
-    h.set(qn("w:hRule"), "exact")
-
-    trPr.append(h)
-
 
 def _set_cell_width(cell, width_inches):
     """
-    Fix cell width.
+    Force a table cell to a fixed width.
     """
+
     cell.width = Inches(width_inches)
 
+    tc = cell._tc
+    tcPr = tc.get_or_add_tcPr()
 
-def _remove_cell_margins(cell):
+    tcW = tcPr.first_child_found_in("w:tcW")
+
+    if tcW is None:
+        tcW = OxmlElement("w:tcW")
+        tcPr.append(tcW)
+
+    tcW.set(qn("w:type"), "dxa")
+    tcW.set(
+        qn("w:w"),
+        str(int(width_inches * 1440)),
+    )
+
+
+def _set_cell_margins(
+    cell,
+    top=0,
+    bottom=0,
+    left=0,
+    right=0,
+):
     """
-    Remove Word's default internal padding.
+    Remove Word's default cell margins.
+
+    Values are twips.
+    Zero means absolutely no padding.
     """
-    tcPr = cell._tc.get_or_add_tcPr()
+
+    tc = cell._tc
+    tcPr = tc.get_or_add_tcPr()
 
     tcMar = tcPr.first_child_found_in("w:tcMar")
 
@@ -99,42 +116,102 @@ def _remove_cell_margins(cell):
         tcMar = OxmlElement("w:tcMar")
         tcPr.append(tcMar)
 
-    for side in ("top", "bottom", "left", "right"):
-
-        node = tcMar.find(qn(f"w:{side}"))
+    for name, value in (
+        ("top", top),
+        ("left", left),
+        ("bottom", bottom),
+        ("right", right),
+    ):
+        node = tcMar.find(qn(f"w:{name}"))
 
         if node is None:
-            node = OxmlElement(f"w:{side}")
+            node = OxmlElement(f"w:{name}")
             tcMar.append(node)
 
-        node.set(qn("w:w"), "0")
+        node.set(qn("w:w"), str(value))
         node.set(qn("w:type"), "dxa")
 
 
+def _remove_table_borders(table):
+    """
+    Create a completely borderless table.
+    """
+
+    tblPr = table._tbl.tblPr
+
+    borders = tblPr.first_child_found_in("w:tblBorders")
+
+    if borders is None:
+        borders = OxmlElement("w:tblBorders")
+        tblPr.append(borders)
+
+    for edge in (
+        "top",
+        "left",
+        "bottom",
+        "right",
+        "insideH",
+        "insideV",
+    ):
+        element = OxmlElement(f"w:{edge}")
+        element.set(qn("w:val"), "nil")
+        borders.append(element)
+
+
+def _set_row_height(row):
+    """
+    Force an exact Avery row height.
+    """
+
+    row.height = Inches(LABEL_HEIGHT)
+    row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
+
 ##############################################################################
-# Paragraph helpers
+# Paragraph / text helpers
 ##############################################################################
 
-def _new_paragraph(cell):
+def _clear_cell(cell):
     """
-    Create a paragraph with zero spacing.
+    Remove Word's default empty paragraph from a table cell.
     """
-    p = cell.add_paragraph()
+
+    if cell.paragraphs:
+        p = cell.paragraphs[0]._element
+        p.getparent().remove(p)
+
+
+def _paragraph(
+    container,
+    align=WD_ALIGN_PARAGRAPH.LEFT,
+):
+    """
+    Create a paragraph with NO extra spacing.
+    """
+
+    p = container.add_paragraph()
 
     fmt = p.paragraph_format
 
     fmt.space_before = Pt(0)
     fmt.space_after = Pt(0)
+
+    # Single spacing
     fmt.line_spacing = 1.0
+
+    # Prevent Word from inserting page breaks
+    fmt.keep_together = True
+    fmt.keep_with_next = False
+
+    p.alignment = align
 
     return p
 
 
 def _add_text(
-    cell,
+    container,
     text,
     *,
-    size=9,
+    size=BODY_SIZE,
     bold=False,
     italic=False,
     color=BLACK,
@@ -143,62 +220,67 @@ def _add_text(
     """
     Add one formatted paragraph.
     """
+
+    if text is None:
+        return
+
+    text = str(text).strip()
+
     if not text:
-        return None
+        return
 
-    p = _new_paragraph(cell)
+    p = _paragraph(
+        container,
+        align=align,
+    )
 
-    p.alignment = align
+    run = p.add_run(text)
 
-    run = p.add_run(str(text))
+    run.font.name = "Arial"
+    run.font.size = Pt(size)
 
     run.bold = bold
     run.italic = italic
 
-    run.font.name = "Arial"
-    run.font.size = Pt(size)
     run.font.color.rgb = color
 
-    return p
 
-
-##############################################################################
-# Cell initialization
-##############################################################################
-
-def _clear_cell(cell):
+def _value(row, field):
     """
-    Remove default paragraph and prepare cell.
+    Safely retrieve a value from a seed record.
     """
-    cell.text = ""
 
-    cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.TOP
+    value = row.get(field)
 
-    _remove_cell_margins(cell)
+    if value is None:
+        return ""
+
+    return str(value).strip()
 
 
-##############################################################################
-# Field helpers
-##############################################################################
-
-def _value(row, key):
+def _normalize(text):
     """
-    Safe string lookup.
+    Collapse multiple whitespace characters into single spaces.
     """
-    return (row.get(key) or "").strip()
 
+    if not text:
+        return ""
 
-def _has_text(value):
-    return bool(value and value.strip())
+    return " ".join(str(text).split())
 
 
 ##############################################################################
 # Label list builder
 ##############################################################################
 
-def _build_label_list(label_data, include_background=False):
+def _build_label_list(
+    label_data,
+    include_background=False,
+):
     """
-    Returns:
+    Expand (row, quantity) pairs into a flat list of labels.
+
+    Returns
 
         [
             (row, False),
@@ -212,14 +294,19 @@ def _build_label_list(label_data, include_background=False):
 
     for row, qty in label_data:
 
+        qty = int(qty)
+
         for _ in range(qty):
             labels.append((row, False))
 
         if include_background:
 
-            bg = _value(row, "BackgroundInfo")
+            background = _value(
+                row,
+                "BackgroundInfo",
+            )
 
-            if bg:
+            if background:
 
                 for _ in range(qty):
                     labels.append((row, True))
@@ -232,11 +319,19 @@ def _build_label_list(label_data, include_background=False):
 
 def _setup_document():
     """
-    Create a Word document configured for Avery 94207 labels.
+    Create a Word document configured specifically for
+    Avery 94207 labels.
     """
+
     document = Document()
 
+    ##########################################################################
+    # Page setup
+    ##########################################################################
+
     section = document.sections[0]
+
+    section.start_type = WD_SECTION.NEW_PAGE
 
     section.page_width = Inches(PAGE_WIDTH)
     section.page_height = Inches(PAGE_HEIGHT)
@@ -247,51 +342,108 @@ def _setup_document():
     section.top_margin = Inches(TOP_MARGIN)
     section.bottom_margin = Inches(BOTTOM_MARGIN)
 
+    ##########################################################################
+    # Header / Footer
+    ##########################################################################
+
+    section.header_distance = Inches(0)
+    section.footer_distance = Inches(0)
+
+    ##########################################################################
+    # Document defaults
+    ##########################################################################
+
+    normal = document.styles["Normal"]
+
+    normal.font.name = "Arial"
+    normal.font.size = Pt(BODY_SIZE)
+
+    pf = normal.paragraph_format
+
+    pf.space_before = Pt(0)
+    pf.space_after = Pt(0)
+
+    pf.line_spacing = 1.0
+
+    pf.keep_together = True
+    pf.keep_with_next = False
+
+    ##########################################################################
+    # Table style defaults
+    ##########################################################################
+
+    if "Table Grid" in document.styles:
+
+        tbl = document.styles["Table Grid"]
+
+        tbl.font.name = "Arial"
+        tbl.font.size = Pt(BODY_SIZE)
+
+        tpf = tbl.paragraph_format
+
+        tpf.space_before = Pt(0)
+        tpf.space_after = Pt(0)
+        tpf.line_spacing = 1.0
+
+    ##########################################################################
+    # Remove automatic paragraph after document creation
+    ##########################################################################
+
+    if document.paragraphs:
+
+        p = document.paragraphs[0]._element
+        p.getparent().remove(p)
+
     return document
 
 
 ##############################################################################
-# Table formatting
+# Page helpers
 ##############################################################################
 
-def _prepare_table(table):
+def _new_page(document):
     """
-    Configure one 5x2 label table.
+    Start a new label page.
+
+    The first page already exists, so only add a section
+    when the document already contains content.
     """
 
-    table.alignment = WD_TABLE_ALIGNMENT.CENTER
-    table.autofit = False
+    if document.tables:
 
-    try:
-        table.allow_autofit = False
-    except AttributeError:
-        pass
+        document.add_page_break()
 
-    for column in table.columns:
-        for cell in column.cells:
-            _set_cell_width(cell, LABEL_WIDTH)
 
-    for row in table.rows:
+def _remaining_slots(label_count):
+    """
+    Number of empty labels needed to finish the page.
+    """
 
-        _set_row_height(row, LABEL_HEIGHT)
+    remainder = label_count % LABELS_PER_PAGE
 
-        for cell in row.cells:
+    if remainder == 0:
+        return 0
 
-            _clear_cell(cell)
-
+    return LABELS_PER_PAGE - remainder
 
 ##############################################################################
-# Page creation
+# Avery page builder
 ##############################################################################
 
-def _create_page(document):
+def _create_page_table(document):
     """
-    Add one Avery page (5 rows x 2 columns).
+    Create one Avery 94207 page.
 
-    Returns
-    -------
-    table
-        Prepared table ready to receive labels.
+        2 columns
+        5 rows
+
+    Every cell is exactly
+
+        4.000" × 2.000"
+
+    No borders.
+    No padding.
+    No autofit.
     """
 
     table = document.add_table(
@@ -299,31 +451,140 @@ def _create_page(document):
         cols=COLS,
     )
 
-    _prepare_table(table)
+    table.alignment = WD_TABLE_ALIGNMENT.CENTER
+    table.autofit = False
+
+    _remove_table_borders(table)
+
+    #######################################################################
+    # Fixed column widths
+    #######################################################################
+
+    for column in table.columns:
+
+        column.width = Inches(LABEL_WIDTH)
+
+    #######################################################################
+    # Fixed row heights
+    #######################################################################
+
+    for row in table.rows:
+
+        _set_row_height(row)
+
+    #######################################################################
+    # Configure every label cell
+    #######################################################################
+
+    for row in table.rows:
+
+        for cell in row.cells:
+
+            _clear_cell(cell)
+
+            cell.vertical_alignment = (
+                WD_CELL_VERTICAL_ALIGNMENT.TOP
+            )
+
+            _set_cell_width(
+                cell,
+                LABEL_WIDTH,
+            )
+
+            #
+            # Absolutely no Word padding
+            #
+            _set_cell_margins(
+                cell,
+                top=0,
+                bottom=0,
+                left=0,
+                right=0,
+            )
 
     return table
 
 
 ##############################################################################
-# Cell lookup
+# Label container
 ##############################################################################
 
-def _label_cell(table, slot):
+def _label_cell(table, index):
     """
-    Convert a label slot number (0-9)
-    into the appropriate table cell.
+    Return the table cell corresponding to a label number.
 
-    0 1
-    2 3
-    4 5
-    6 7
-    8 9
+        0..9
     """
 
-    row = slot // COLS
-    col = slot % COLS
+    row = index // COLS
+    col = index % COLS
 
     return table.cell(row, col)
+
+
+##############################################################################
+# Two-column content layout
+##############################################################################
+
+def _content_table(cell):
+    """
+    Create the borderless table used inside each label.
+
+    +----------------------+------------------+
+    |                      |                  |
+    |   LEFT CONTENT       | RIGHT CONTENT    |
+    |                      |                  |
+    +----------------------+------------------+
+
+    This produces much more stable alignment than
+    dozens of independent paragraphs.
+    """
+
+    inner = cell.add_table(
+        rows=1,
+        cols=2,
+    )
+
+    inner.autofit = False
+    inner.alignment = WD_TABLE_ALIGNMENT.LEFT
+
+    _remove_table_borders(inner)
+
+    #######################################################################
+    # Left side
+    #######################################################################
+
+    left = inner.columns[0]
+    left.width = Inches(2.75)
+
+    #######################################################################
+    # Right side
+    #######################################################################
+
+    right = inner.columns[1]
+    right.width = Inches(1.15)
+
+    #######################################################################
+    # Remove Word padding
+    #######################################################################
+
+    for c in inner.row_cells(0):
+
+        c.vertical_alignment = (
+            WD_CELL_VERTICAL_ALIGNMENT.TOP
+        )
+
+        _clear_cell(c)
+
+        _set_cell_margins(
+            c,
+            top=0,
+            bottom=0,
+            left=0,
+            right=0,
+        )
+
+    return inner
 
 
 ##############################################################################
@@ -332,47 +593,23 @@ def _label_cell(table, slot):
 
 def _page_chunks(labels):
     """
-    Yield one page of labels at a time.
+    Yield pages of ten labels.
+
+    Example
+
+        page 1 -> labels[0:10]
+        page 2 -> labels[10:20]
     """
 
-    for start in range(0, len(labels), LABELS_PER_PAGE):
+    for start in range(
+        0,
+        len(labels),
+        LABELS_PER_PAGE,
+    ):
 
-        yield labels[start:start + LABELS_PER_PAGE]
-
-
-##############################################################################
-# Main page builder
-##############################################################################
-
-def _build_document(document, labels):
-    """
-    Create all document pages.
-
-    Rendering of individual labels is delegated to
-    _draw_seed_label() and _draw_background_label(),
-    which are implemented in later sections.
-    """
-
-    first_page = True
-
-    for page in _page_chunks(labels):
-
-        if not first_page:
-            document.add_page_break()
-
-        first_page = False
-
-        table = _create_page(document)
-
-        for slot, (row, is_background) in enumerate(page):
-
-            cell = _label_cell(table, slot)
-
-            if is_background:
-                _draw_background_label(cell, row)
-            else:
-                _draw_seed_label(cell, row)
-
+        yield labels[
+            start:start + LABELS_PER_PAGE
+        ]
 
 ##############################################################################
 # Standard seed label
@@ -380,107 +617,51 @@ def _build_document(document, labels):
 
 def _draw_seed_label(cell, row):
     """
-    Render one standard seed label.
+    Draw one standard seed label.
     """
-
-    _clear_cell(cell)
-
-    # ------------------------------------------------------------------
-    # Extract fields
-    # ------------------------------------------------------------------
 
     family = _value(row, "Family")
     variety = _value(row, "Variety")
-    season = _value(row, "Season")
-    edible = _value(row, "Edible")
-    year = _value(row, "Year")
-    num = _value(row, "NumSeeds")
-    saver = _value(row, "SeedSaverLevel")
-    germ = _value(row, "Germination")
-    soil = _value(row, "SoilTemperature")
     hybrid = _value(row, "HybridDoNotSave")
-    comments = _value(row, "Comments")
 
-    # ------------------------------------------------------------------
-    # Header
-    # ------------------------------------------------------------------
-
-    p = _new_paragraph(cell)
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-
-    run = p.add_run(
-        "Cochise County Master Gardener Association"
-    )
-    run.bold = True
-    run.font.size = Pt(TITLE_SIZE)
-    run.font.color.rgb = GREEN
-    run.font.name = "Arial"
-
-    run = p.add_run()
-    run.add_break()
-
-    run = p.add_run("Seed Library")
-    run.bold = True
-    run.font.size = Pt(TITLE_SIZE)
-    run.font.color.rgb = GREEN
-    run.font.name = "Arial"
-
-    # ------------------------------------------------------------------
-    # Divider
-    # ------------------------------------------------------------------
-
-    p = _new_paragraph(cell)
-
-    run = p.add_run(
-    
-    )
-    
-    run.font.size = Pt(6)
-    run.font.color.rgb = BLACK
-
-    # ------------------------------------------------------------------
-    # Main table
-    #
-    # Two columns:
-    #
-    # +----------------------+-------------+
-    # | left                 | right       |
-    # +----------------------+-------------+
-    #
-    # ------------------------------------------------------------------
-
-    inner = cell.add_table(
-        rows=1,
-        cols=2,
-    )
-
-    inner.autofit = False
-    inner.alignment = WD_TABLE_ALIGNMENT.CENTER
+    inner = _content_table(cell)
 
     left = inner.cell(0, 0)
     right = inner.cell(0, 1)
 
-    _clear_cell(left)
-    _clear_cell(right)
+    ######################################################################
+    # LEFT SIDE
+    ######################################################################
 
-    _set_cell_width(left, 2.60)
-    _set_cell_width(right, 1.20)
+    _add_text(
+        left,
+        "Cochise County Master Gardener Association",
+        size=TITLE_SIZE,
+        bold=True,
+        color=GREEN,
+        align=WD_ALIGN_PARAGRAPH.CENTER,
+    )
 
-    left.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.TOP
-    right.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.TOP
+    _add_text(
+        left,
+        "Seed Library",
+        size=TITLE_SIZE,
+        bold=True,
+        color=GREEN,
+        align=WD_ALIGN_PARAGRAPH.CENTER,
+    )
 
-    # ------------------------------------------------------------------
-    # LEFT COLUMN
-    # ------------------------------------------------------------------
+    #
+    # No divider in Version 2
+    #
 
     if family:
 
         _add_text(
             left,
-            family,
+            family.upper(),
             size=FAMILY_SIZE,
             bold=True,
-            color=RED,
         )
 
     if variety:
@@ -489,244 +670,396 @@ def _draw_seed_label(cell, row):
             left,
             variety,
             size=VARIETY_SIZE,
-            italic=True,
+            bold=True,
         )
 
+    ######################################################################
     # Hybrid warning
+    ######################################################################
 
     if hybrid:
 
-        p = _new_paragraph(left)
+        value = hybrid.strip().lower()
 
-        run = p.add_run(
-            "* HYBRID — DO NOT SAVE SEEDS *"
-        )
+        if value in (
+            "y",
+            "yes",
+            "true",
+            "1",
+            "x",
+        ):
 
-        run.bold = True
-        run.font.size = Pt(TINY_SIZE)
-        run.font.color.rgb = RGBColor(183, 28, 28)
-        run.font.name = "Arial"
+            _add_text(
+                left,
+                "*** HYBRID - DO NOT SAVE SEED ***",
+                size=BODY_SIZE,
+                bold=True,
+                color=RED,
+            )
 
+    ######################################################################
     # Comments
+    ######################################################################
+
+    comments = _normalize(
+        _value(row, "Comments")
+    )
 
     if comments:
 
-        comments = " ".join(comments.split())
-
         _add_text(
             left,
-            comments[:300],
-            size=BODY_SIZE,
+            comments,
+            size=SMALL_SIZE,
         )
 
-    # ------------------------------------------------------------------
-    # RIGHT COLUMN
-    # ------------------------------------------------------------------
+    ######################################################################
+    # RIGHT SIDE
+    ######################################################################
 
+    year = _value(row, "Year")
     if year:
-
         _add_text(
             right,
-            year,
+            f"Year: {year}",
             size=BODY_SIZE,
-            bold=False,
-            align=WD_ALIGN_PARAGRAPH.CENTER,
-        )
-
-    if edible:
-
-        _add_text(
-            right,
-            edible.upper(),
-            size=BODY_SIZE,
-            bold=False,
-            align=WD_ALIGN_PARAGRAPH.CENTER,
-        )
-
-    if season:
-
-        _add_text(
-            right,
-            season,
-            size=BODY_SIZE,
-            italic=True,
-            align=WD_ALIGN_PARAGRAPH.CENTER,
-        )
-
-    if num:
-
-        _add_text(
-            right,
-            f"{num} Seeds",
-            size=BODY_SIZE,
-            align=WD_ALIGN_PARAGRAPH.CENTER,
-        )
-
-    if saver:
-
-        _add_text(
-            right,
-            saver,
-            size=TINY_SIZE,
             bold=True,
-            align=WD_ALIGN_PARAGRAPH.CENTER,
         )
+
+    edible = _value(row, "Edible")
+    if edible:
+        _add_text(
+            right,
+            f"Edible: {edible}",
+            size=BODY_SIZE,
+        )
+
+    season = _value(row, "Season")
+    if season:
+        _add_text(
+            right,
+            f"Season: {season}",
+            size=BODY_SIZE,
+        )
+
+    num = _value(row, "NumSeeds")
+    if num:
+        _add_text(
+            right,
+            f"Seeds: {num}",
+            size=BODY_SIZE,
+        )
+
+    saver = _value(row, "SeedSaverLevel")
+    if saver:
+        _add_text(
+            right,
+            f"Seed Saver: {saver}",
+            size=BODY_SIZE,
+        )
+
+    ######################################################################
+    # Germination
+    ######################################################################
+
+    germ = _value(row, "Germination")
 
     if germ:
 
         _add_text(
             right,
             f"Germ: {germ}",
-            size=SMALL_SIZE,
-            align=WD_ALIGN_PARAGRAPH.CENTER,
+            size=BODY_SIZE,
         )
+
+    ######################################################################
+    # Soil Temperature
+    ######################################################################
+
+    soil = _value(row, "SoilTemperature")
 
     if soil:
 
         _add_text(
             right,
             f"Soil: {soil}",
-            size=SMALL_SIZE,
-            align=WD_ALIGN_PARAGRAPH.CENTER,
+            size=BODY_SIZE,
         )
 
-    # ------------------------------------------------------------------
-    # Keep label together
-    # ------------------------------------------------------------------
+    ######################################################################
+    # Blank lines to keep left/right balanced
+    ######################################################################
 
-    for paragraph in cell.paragraphs:
+    left_count = len(left.paragraphs)
+    right_count = len(right.paragraphs)
 
-        fmt = paragraph.paragraph_format
+    while left_count < right_count:
 
-        fmt.keep_together = True
-        fmt.keep_with_next = False
+        _add_text(
+            left,
+            " ",
+            size=TINY_SIZE,
+        )
+
+        left_count += 1
+
+    while right_count < left_count:
+
+        _add_text(
+            right,
+            " ",
+            size=TINY_SIZE,
+        )
+
+        right_count += 1
+
+    ######################################################################
+    # Final cleanup
+    ######################################################################
+
+    #
+    # Ensure every paragraph has identical spacing.
+    #
+    for c in (left, right):
+
+        for p in c.paragraphs:
+
+            fmt = p.paragraph_format
+
+            fmt.space_before = Pt(0)
+            fmt.space_after = Pt(0)
+            fmt.line_spacing = 1.0
+
+            fmt.keep_together = True
+            fmt.keep_with_next = False
+
+    return
 
 ##############################################################################
-# Background information label
+# Background Information Label
 ##############################################################################
 
 def _draw_background_label(cell, row):
     """
-    Render one Background Information label.
-    """
+    Draw one Background Information label.
 
-    _clear_cell(cell)
+    Unlike the standard seed label, this uses the
+    full label width for the background text.
+    """
 
     family = _value(row, "Family")
     variety = _value(row, "Variety")
-    background = _value(row, "BackgroundInfo")
+    background = _normalize(
+        _value(row, "BackgroundInfo")
+    )
 
-    # --------------------------------------------------------------
-    # Family
-    # --------------------------------------------------------------
+    ######################################################################
+    # Single full-width content area
+    ######################################################################
+
+    _clear_cell(cell)
+
+    _set_cell_margins(
+        cell,
+        top=0,
+        bottom=0,
+        left=0,
+        right=0,
+    )
+
+    cell.vertical_alignment = (
+        WD_CELL_VERTICAL_ALIGNMENT.TOP
+    )
+
+    ######################################################################
+    # Title
+    ######################################################################
+
+    _add_text(
+        cell,
+        "Cochise County Master Gardener Association",
+        size=TITLE_SIZE,
+        bold=True,
+        color=GREEN,
+        align=WD_ALIGN_PARAGRAPH.CENTER,
+    )
+
+    _add_text(
+        cell,
+        "Seed Library",
+        size=TITLE_SIZE,
+        bold=True,
+        color=GREEN,
+        align=WD_ALIGN_PARAGRAPH.CENTER,
+    )
+
+    ######################################################################
+    # Plant Identification
+    ######################################################################
 
     if family:
 
         _add_text(
             cell,
-            family,
+            family.upper(),
             size=FAMILY_SIZE,
             bold=True,
-            color=BLACK,
         )
 
-    # --------------------------------------------------------------
-    # Title
-    # --------------------------------------------------------------
+    if variety:
 
-    title = variety
+        _add_text(
+            cell,
+            variety,
+            size=VARIETY_SIZE,
+            bold=True,
+        )
 
-    if title:
-        title += " — Background Information"
-    else:
-        title = "Background Information"
+    ######################################################################
+    # Background heading
+    ######################################################################
 
     _add_text(
         cell,
-        title,
+        "Background Information",
         size=BODY_SIZE,
         bold=True,
+        color=GREEN,
     )
 
-    # Blank line
-
-    _new_paragraph(cell)
-
-    # --------------------------------------------------------------
-    # Body text
-    # --------------------------------------------------------------
+    ######################################################################
+    # Background text
+    ######################################################################
 
     if background:
 
-        background = " ".join(background.split())
+        _add_text(
+            cell,
+            background,
+            size=SMALL_SIZE,
+        )
 
-        p = _new_paragraph(cell)
+    ######################################################################
+    # Final cleanup
+    ######################################################################
 
-        p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    for p in cell.paragraphs:
 
-        run = p.add_run(background)
+        fmt = p.paragraph_format
 
-        run.font.name = "Arial"
-        run.font.size = Pt(BODY_SIZE)
-
-    # --------------------------------------------------------------
-    # Keep together
-    # --------------------------------------------------------------
-
-    for paragraph in cell.paragraphs:
-
-        fmt = paragraph.paragraph_format
+        fmt.space_before = Pt(0)
+        fmt.space_after = Pt(0)
+        fmt.line_spacing = 1.0
 
         fmt.keep_together = True
         fmt.keep_with_next = False
 
 ##############################################################################
-# Public entry point
+# Document Builder
 ##############################################################################
 
-def generate_labels_docx(
-    label_data,
-    include_background=False,
+def _build_document(
+    document,
+    labels,
 ):
     """
-    Generate Avery 94207 labels as a Microsoft Word document.
+    Build the complete Word document.
 
-    Parameters
-    ----------
-    label_data
-        List of (row, quantity) tuples identical to
-        generate_labels_pdf().
+    Labels are supplied as
 
-    include_background
-        If True, append one Background Information
-        label for every printed seed label that
-        contains BackgroundInfo text.
+        (row, is_background)
 
-    Returns
-    -------
-    bytes | None
-        DOCX document bytes.
+    where
+
+        is_background == False
+
+    produces a normal seed label
+
+    and
+
+        is_background == True
+
+    produces a Background Information label.
     """
 
-    labels = _build_label_list(
-        label_data,
-        include_background,
-    )
-
     if not labels:
-        return None
+        return
 
-    document = _setup_document()
+    ######################################################################
+    # Build one Avery page at a time
+    ######################################################################
 
-    _build_document(
-        document,
-        labels,
-    )
+    first_page = True
 
-    buff = BytesIO()
+    for page in _page_chunks(labels):
 
-    document.save(buff)
+        #
+        # Every page after the first begins on a new page.
+        #
+        if not first_page:
+            _new_page(document)
 
-    buff.seek(0)
+        first_page = False
 
-    return buff.getvalue()
+        table = _create_page_table(document)
+
+        ##################################################################
+        # Draw each label
+        ##################################################################
+
+        for index, (row, is_background) in enumerate(page):
+
+            cell = _label_cell(
+                table,
+                index,
+            )
+
+            if is_background:
+
+                _draw_background_label(
+                    cell,
+                    row,
+                )
+
+            else:
+
+                _draw_seed_label(
+                    cell,
+                    row,
+                )
+
+        ##################################################################
+        # Blank out unused labels on the last page
+        ##################################################################
+
+        for blank in range(
+            len(page),
+            LABELS_PER_PAGE,
+        ):
+
+            cell = _label_cell(
+                table,
+                blank,
+            )
+
+            _clear_cell(cell)
+
+            _set_cell_margins(
+                cell,
+                top=0,
+                bottom=0,
+                left=0,
+                right=0,
+            )
+
+            cell.vertical_alignment = (
+                WD_CELL_VERTICAL_ALIGNMENT.TOP
+            )
+
+    return document
+
+generate_labels_docx(
+    label_data,
+    include_background=False,
+)
+
