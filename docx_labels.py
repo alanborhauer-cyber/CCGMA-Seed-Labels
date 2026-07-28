@@ -580,7 +580,7 @@ def _content_table(cell):
             c,
             top=0,
             bottom=0,
-            left=0.2,
+            left=0,
             right=0,
         )
 
@@ -964,21 +964,13 @@ def _build_document(
 ):
     """
     Build the complete Word document.
-
     Labels are supplied as
-
         (row, is_background)
-
     where
-
         is_background == False
-
     produces a normal seed label
-
     and
-
         is_background == True
-
     produces a Background Information label.
     """
 
