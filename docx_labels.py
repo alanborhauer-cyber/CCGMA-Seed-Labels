@@ -1058,7 +1058,7 @@ def _build_document(
 
     return document
 
-generate_labels_docx(
+def generate_labels_docx(
     label_data,
     include_background=False,
 )
