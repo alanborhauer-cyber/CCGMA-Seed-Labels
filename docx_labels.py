@@ -1061,5 +1061,5 @@ def _build_document(
 def generate_labels_docx(
     label_data,
     include_background=False,
-)
+):
 
