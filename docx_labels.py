@@ -1005,7 +1005,15 @@ def _build_document(
                 table,
                 index,
             )
-
+            col = index % COLS 
+            if col == 1:
+                    _set_cell_margins(
+                    cell,
+                    top=0,
+                    bottom=0,
+                    left=72,    # 72 twips ≈ 0.05"
+                    right=0,
+                )
             if is_background:
 
                 _draw_background_label(
