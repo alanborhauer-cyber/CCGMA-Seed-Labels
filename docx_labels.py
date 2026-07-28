@@ -1063,3 +1063,39 @@ def generate_labels_docx(
     include_background=False,
 ):
 
+        try:
+
+        labels = _build_label_list(
+            label_data,
+            include_background,
+        )
+
+        if not labels:
+            return None
+
+        document = _setup_document()
+
+        _build_document(
+            document,
+            labels,
+        )
+
+        buffer = BytesIO()
+
+        document.save(buffer)
+
+        buffer.seek(0)
+
+        return buffer.getvalue()
+
+    except Exception as exc:
+
+        try:
+            import streamlit as st
+            st.error("Unable to generate the Word document.")
+            st.exception(exc)
+        except Exception:
+            pass
+
+        return None
+
