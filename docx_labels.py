@@ -549,7 +549,7 @@ def _content_table(cell):
     inner.alignment = WD_TABLE_ALIGNMENT.LEFT
 
 # Move the entire content slightly right
-    inner.rows[0].cells[0].paragraphs[0].paragraph_format.left_indent = Inches(0.06)
+    inner.rows[0].cells[0].paragraphs[0].paragraph_format.left_indent = Inches(0.2)
 
     _remove_table_borders(inner)
 
