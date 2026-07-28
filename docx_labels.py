@@ -1063,7 +1063,7 @@ def generate_labels_docx(
     include_background=False,
 ):
 
-        try:
+    try:
 
         labels = _build_label_list(
             label_data,
