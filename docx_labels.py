@@ -451,7 +451,7 @@ def _create_page_table(document):
         cols=COLS,
     )
 
-    table.alignment = WD_TABLE_ALIGNMENT.left
+    table.alignment = WD_TABLE_ALIGNMENT.LEFT
     table.autofit = False
 
     _remove_table_borders(table)
