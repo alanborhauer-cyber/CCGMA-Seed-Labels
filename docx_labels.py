@@ -1040,7 +1040,7 @@ def _build_document(
                 cell,
                 top=0,
                 bottom=0,
-                left=0,
+                left=72,
                 right=0,
             )
 
