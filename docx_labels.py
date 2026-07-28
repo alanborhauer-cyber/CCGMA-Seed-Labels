@@ -432,7 +432,7 @@ def _draw_seed_label(cell, row):
     p = _new_paragraph(cell)
 
     run = p.add_run(
-        "────────────────────────────────"
+    
     )
     
     run.font.size = Pt(6)
