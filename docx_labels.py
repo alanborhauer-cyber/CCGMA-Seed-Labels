@@ -541,12 +541,15 @@ def _content_table(cell):
     """
 
     inner = cell.add_table(
-        rows=1,
-        cols=2,
+    rows=1,
+    cols=2,
     )
 
     inner.autofit = False
     inner.alignment = WD_TABLE_ALIGNMENT.LEFT
+
+# Move the entire content slightly right
+    inner.rows[0].cells[0].paragraphs[0].paragraph_format.left_indent = Inches(0.06)
 
     _remove_table_borders(inner)
 
