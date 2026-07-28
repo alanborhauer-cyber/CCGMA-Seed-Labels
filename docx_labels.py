@@ -451,7 +451,7 @@ def _create_page_table(document):
         cols=COLS,
     )
 
-    table.alignment = WD_TABLE_ALIGNMENT.CENTER
+    table.alignment = WD_TABLE_ALIGNMENT.left
     table.autofit = False
 
     _remove_table_borders(table)
@@ -463,6 +463,8 @@ def _create_page_table(document):
     for column in table.columns:
 
         column.width = Inches(LABEL_WIDTH)
+        table.columns[0].width = Inches(4.00)
+        table.columns[1].width = Inches(4.00)
 
     #######################################################################
     # Fixed row heights
