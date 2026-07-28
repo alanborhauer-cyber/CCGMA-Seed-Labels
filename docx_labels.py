@@ -580,7 +580,7 @@ def _content_table(cell):
             c,
             top=0,
             bottom=0,
-            left=0,
+            left=0.2,
             right=0,
         )
 
