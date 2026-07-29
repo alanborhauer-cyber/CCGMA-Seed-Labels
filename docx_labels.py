@@ -462,8 +462,8 @@ def _create_page_table(document):
 
     for column in table.columns:
 
-        table.columns[0].width = Inches(3.75)
-        table.columns[1].width = Inches(4.25)
+        table.columns[0].width = Inches(4.00)
+        table.columns[1].width = Inches(4.00)
 
 
     #######################################################################
