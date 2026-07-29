@@ -432,55 +432,41 @@ def _remaining_slots(label_count):
 
 def _create_page_table(document):
     """
-    Create one Avery 94207 page.
+    Avery 94207
 
-        2 columns
-        5 rows
+        4.000 label
+        0.125 gutter
+        4.000 label
+        0.125 filler
 
-    Every cell is exactly
-
-        4.000" × 2.000"
-
-    No borders.
-    No padding.
-    No autofit.
+    Five rows.
     """
 
     table = document.add_table(
         rows=ROWS,
-        cols=COLS,
+        cols=4,
     )
 
-    table.alignment = WD_TABLE_ALIGNMENT.LEFT
     table.autofit = False
+    table.alignment = WD_TABLE_ALIGNMENT.LEFT
 
     _remove_table_borders(table)
 
-    #######################################################################
-    # Fixed column widths
-    #######################################################################
+    widths = (
+        4.00,
+        0.125,
+        4.00,
+        0.125,
+    )
 
-    for column in table.columns:
-
-        table.columns[0].width = Inches(4.00)
-        table.columns[1].width = Inches(4.00)
-
-
-    #######################################################################
-    # Fixed row heights
-    #######################################################################
+    for i, width in enumerate(widths):
+        table.columns[i].width = Inches(width)
 
     for row in table.rows:
 
         _set_row_height(row)
 
-    #######################################################################
-    # Configure every label cell
-    #######################################################################
-
-    for row in table.rows:
-
-        for cell in row.cells:
+        for i, cell in enumerate(row.cells):
 
             _clear_cell(cell)
 
@@ -488,14 +474,8 @@ def _create_page_table(document):
                 WD_CELL_VERTICAL_ALIGNMENT.TOP
             )
 
-            _set_cell_width(
-                cell,
-                LABEL_WIDTH,
-            )
+            _set_cell_width(cell, widths[i])
 
-            #
-            # Absolutely no Word padding
-            #
             _set_cell_margins(
                 cell,
                 top=0,
@@ -512,16 +492,13 @@ def _create_page_table(document):
 ##############################################################################
 
 def _label_cell(table, index):
-    """
-    Return the table cell corresponding to a label number.
 
-        0..9
-    """
+    row = index // 2
 
-    row = index // COLS
-    col = index % COLS
+    if index % 2 == 0:
+        return table.cell(row, 0)
 
-    return table.cell(row, col)
+    return table.cell(row, 2)
 
 
 ##############################################################################
