@@ -19,8 +19,8 @@ from docx.enum.table import (
 )
 from docx.enum.text import (
     WD_ALIGN_PARAGRAPH,
+    WD_BREAK,
 )
-
 from docx.shared import (
     Inches,
     Pt,
@@ -835,8 +835,8 @@ def _new_page(document):
     paragraph.paragraph_format.space_after = Pt(0)
     paragraph.paragraph_format.line_spacing = 1.0
 
-    paragraph.add_run().add_break()
-
+    from docx.enum.text import WD_BREAK
+    paragraph.add_run().add_break(WD_BREAK.PAGE)
 
 def _build_document(
     document,
