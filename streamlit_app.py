@@ -1892,21 +1892,42 @@ def page_labels():
             st.rerun()
 
         
-    if gen_docx_clicked:
+
+if gen_docx_clicked:
+    try:
         with st.spinner("Generating Word document..."):
             docx_bytes = generate_labels_docx(
                 label_data,
-                include_background=st.session_state.label_include_bg
+                include_background=(
+                    st.session_state.label_include_bg
+                ),
             )
+
         if docx_bytes:
             st.session_state.label_docx_bytes = docx_bytes
+
             pages = -(-total_labels // 10)
+
             st.success(
-                f"Word document ready — {total_labels} labels across "
+                f"Word document ready — "
+                f"{total_labels} labels across "
                 f"{pages} page(s)."
             )
 
             st.rerun()
+
+        else:
+            st.error(
+                "Word generation returned no document. "
+                "Check the docx_labels.py function."
+            )
+
+    except Exception as e:
+        st.error(
+            f"Word generation failed: {type(e).__name__}: {e}"
+        )
+
+
     
     if st.session_state.label_pdf_bytes and not gen_pdf_clicked:
         pages = -(-total_labels // 10)
