@@ -201,8 +201,8 @@ def _add_divider(
     container,
     weight_pt=1,
     color=BLACK,
-    space_before=1,
-    space_after=1,
+    space_before=0,
+    space_after=0,
 ):
     """
     Add a thin horizontal rule spanning the full width of the
