@@ -1891,17 +1891,15 @@ def page_labels():
                 "Print at Actual Size (100%). Click Download above.")
             st.rerun()
 
-        
-
-if gen_docx_clicked:
-    try:
-        with st.spinner("Generating Word document..."):
-            docx_bytes = generate_labels_docx(
-                label_data,
-                include_background=(
-                    st.session_state.label_include_bg
-                ),
-            )
+        if gen_docx_clicked:
+            try:
+                with st.spinner("Generating Word document..."):
+                    docx_bytes = generate_labels_docx(
+                        label_data,
+                        include_background=(
+                            st.session_state.label_include_bg
+                        ),
+                    )
 
         if docx_bytes:
             st.session_state.label_docx_bytes = docx_bytes
