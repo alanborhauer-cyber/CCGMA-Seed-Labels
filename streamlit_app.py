@@ -1859,7 +1859,7 @@ def page_labels():
             )
         else:
             st.button(
-                "Download Word",
+                "Not Ready",
                 disabled=True,
                 width="stretch"
             )
