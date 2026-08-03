@@ -409,6 +409,7 @@ def _content_table(cell):
 # Compact Metadata Field
 ##############################################################################
 
+```python
 def _add_field(
     container,
     label,
@@ -417,7 +418,6 @@ def _add_field(
     size=SMALL_SIZE,
 ):
     """
-
     Add one compact metadata field.
 
     Example:
@@ -459,35 +459,7 @@ def _add_field(
     value_run.font.size = Pt(size)
     value_run.bold = False
     value_run.font.color.rgb = BLACK
-
-
-##############################################################################
-# Data Helpers
-##############################################################################
-
-def _value(row, field):
-    """
-    Safely retrieve a value from a seed record.
-    """
-
-    value = row.get(field)
-
-    if value is None:
-        return ""
-
-    return str(value).strip()
-
-
-def _normalize(text):
-    """
-    Collapse multiple whitespace characters into single spaces.
-    """
-
-    if not text:
-        return ""
-
-    return " ".join(str(text).split())
-
+```
 
 ##############################################################################
 # Label List Builder
