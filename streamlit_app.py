@@ -1891,15 +1891,6 @@ def page_labels():
                 "Print at Actual Size (100%). Click Download above.")
             st.rerun()
 
-        if gen_docx_clicked:
-            try:
-                with st.spinner("Generating Word document..."):
-                    docx_bytes = generate_labels_docx(
-                        label_data,
-                        include_background=(
-                            st.session_state.label_include_bg
-                        ),
-                    )
     if gen_docx_clicked:
         try:
             with st.spinner("Generating Word document..."):
@@ -1910,31 +1901,31 @@ def page_labels():
                     ),
                 )
 
-        if docx_bytes:
-            st.session_state.label_docx_bytes = docx_bytes
+            if docx_bytes:
+                st.session_state.label_docx_bytes = docx_bytes
 
-            pages = -(-total_labels // 10)
+                pages = -(-total_labels // 10)
 
-            st.success(
-                f"Word document ready — "
-                f"{total_labels} labels across "
-                f"{pages} page(s)."
-            )
+                st.success(
+                    f"Word document ready — "
+                    f"{total_labels} labels across "
+                    f"{pages} page(s)."
+                )
 
-            st.rerun()
+                st.rerun()
 
-        else:
+            else:
+                st.error(
+                    "Word generation returned no document. "
+                    "Check the end of generate_labels_docx() "
+                    "in docx_labels.py."
+                )
+
+        except Exception as e:
             st.error(
-                "Word generation returned no document. "
-                "Check the end of generate_labels_docx() "
-                "in docx_labels.py."
+                f"Word generation failed: "
+                f"{type(e).__name__}: {e}"
             )
-
-    except Exception as e:
-        st.error(
-            f"Word generation failed: "
-            f"{type(e).__name__}: {e}"
-        )
     
     if st.session_state.label_pdf_bytes and not gen_pdf_clicked:
         pages = -(-total_labels // 10)
