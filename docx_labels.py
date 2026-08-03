@@ -563,7 +563,6 @@ def _page_chunks(labels):
             start:start + LABELS_PER_PAGE
         ]
 
-
 ##############################################################################
 # Standard Seed Label
 ##############################################################################
@@ -572,36 +571,91 @@ def _draw_seed_label(
     cell,
     row,
 ):
-    """
+
     Draw one standard CCMGA Seed Library label.
 
-    The label uses ordinary Word paragraphs only.
-    No nested tables are created.
-    """
+    Layout:
 
-    ######################################################################
+        Full-width heading
+        Full-width family
+        Full-width variety
+        Full-width hybrid warning
+
+        Left column:
+            Comments
+
+        Right column:
+            Year
+            Season
+            Edible
+            Seeds
+            Seed Saver
+            Germination
+            Soil Temperature
+
+
+    ##########################################################################
     # Read seed information
-    ######################################################################
+    ##########################################################################
 
-    family = _value(row, "Family")
-    variety = _value(row, "Variety")
+    family = _value(
+        row,
+        "Family",
+    )
 
-    season = _value(row, "Season")
-    edible = _value(row, "Edible")
-    year = _value(row, "Year")
+    variety = _value(
+        row,
+        "Variety",
+    )
 
-    num_seeds = _value(row, "NumSeeds")
-    saver = _value(row, "SeedSaverLevel")
+    season = _value(
+        row,
+        "Season",
+    )
 
-    germination = _value(row, "Germination")
-    soil_temp = _value(row, "SoilTemperature")
+    edible = _value(
+        row,
+        "Edible",
+    )
 
-    hybrid = _value(row, "HybridDoNotSave")
-    comments = _value(row, "Comments")
+    year = _value(
+        row,
+        "Year",
+    )
 
-    ######################################################################
-    # CCMGA heading
-    ######################################################################
+    num_seeds = _value(
+        row,
+        "NumSeeds",
+    )
+
+    saver = _value(
+        row,
+        "SeedSaverLevel",
+    )
+
+    germination = _value(
+        row,
+        "Germination",
+    )
+
+    soil_temp = _value(
+        row,
+        "SoilTemperature",
+    )
+
+    hybrid = _value(
+        row,
+        "HybridDoNotSave",
+    )
+
+    comments = _value(
+        row,
+        "Comments",
+    )
+
+    ##########################################################################
+    # Full-width label heading
+    ##########################################################################
 
     _add_text(
         cell,
@@ -612,9 +666,9 @@ def _draw_seed_label(
         align=WD_ALIGN_PARAGRAPH.CENTER,
     )
 
-    ######################################################################
-    # Family
-    ######################################################################
+    ##########################################################################
+    # Full-width family
+    ##########################################################################
 
     if family:
 
@@ -623,12 +677,13 @@ def _draw_seed_label(
             family,
             size=FAMILY_SIZE,
             bold=True,
+            color=BLACK,
             align=WD_ALIGN_PARAGRAPH.CENTER,
         )
 
-    ######################################################################
-    # Variety
-    ######################################################################
+    ##########################################################################
+    # Full-width variety
+    ##########################################################################
 
     if variety:
 
@@ -637,12 +692,13 @@ def _draw_seed_label(
             variety,
             size=VARIETY_SIZE,
             bold=True,
+            color=BLACK,
             align=WD_ALIGN_PARAGRAPH.CENTER,
         )
 
-    ######################################################################
-    # Hybrid warning
-    ######################################################################
+    ##########################################################################
+    # Full-width hybrid warning
+    ##########################################################################
 
     if hybrid:
 
@@ -655,65 +711,74 @@ def _draw_seed_label(
             align=WD_ALIGN_PARAGRAPH.CENTER,
         )
 
-    ######################################################################
-    # Comments
-    ######################################################################
+    ##########################################################################
+    # Two-column content area
+    ##########################################################################
+
+    left_column, right_column = _content_table(
+        cell
+    )
+
+    ##########################################################################
+    # Left column: comments
+    ##########################################################################
 
     if comments:
 
         _add_text(
-            cell,
+            left_column,
             _normalize(comments),
             size=SMALL_SIZE,
+            bold=False,
+            color=BLACK,
+            align=WD_ALIGN_PARAGRAPH.LEFT,
         )
 
-    ######################################################################
-    # Seed information
-    ######################################################################
+    ##########################################################################
+    # Right column: compact metadata
+    ##########################################################################
 
     _add_field(
-        cell,
+        right_column,
         "Year",
         year,
     )
 
     _add_field(
-        cell,
+        right_column,
         "Season",
         season,
     )
 
     _add_field(
-        cell,
+        right_column,
         "Edible",
         edible,
     )
 
     _add_field(
-        cell,
+        right_column,
         "Seeds",
         num_seeds,
     )
 
     _add_field(
-        cell,
+        right_column,
         "Seed Saver",
         saver,
     )
 
     _add_field(
-        cell,
+        right_column,
         "Germination",
         germination,
     )
 
     _add_field(
-        cell,
+        right_column,
         "Soil Temp",
         soil_temp,
     )
-
-
 
 ##############################################################################
 # Background Information Label
@@ -836,7 +901,9 @@ def _new_page(document):
     paragraph.paragraph_format.line_spacing = 1.0
 
     from docx.enum.text import WD_BREAK
-    paragraph.add_run().add_break(WD_BREAK.PAGE)
+    paragraph.add_run().add_break(    
+        WD_BREAK.PAGE
+    )
 
 def _build_document(
     document,
