@@ -48,7 +48,7 @@ FAMILY_SIZE  = 11
 VARIETY_SIZE = 10
 
 BODY_SIZE    = 8
-SMALL_SIZE   = 8
+SMALL_SIZE   = 7
 TINY_SIZE    = 6
 
 
@@ -60,7 +60,7 @@ PAGE_WIDTH  = 8.50
 PAGE_HEIGHT = 11.00
 
 TOP_MARGIN    = 0.49
-BOTTOM_MARGIN = 0.2
+BOTTOM_MARGIN = 0.49
 LEFT_MARGIN   = 0.25
 RIGHT_MARGIN  = 0.125
 
@@ -78,7 +78,7 @@ LABELS_PER_PAGE = 10
 # Internal padding for each label cell, in inches.
 # Increase LABEL_PAD_TOP if content starts too close to the
 # top edge of the label; increase LABEL_PAD_BOTTOM similarly.
-LABEL_PAD_TOP    = 0.2
+LABEL_PAD_TOP    = 0.05
 LABEL_PAD_BOTTOM = 0.00
 LABEL_PAD_LEFT   = 0.00
 LABEL_PAD_RIGHT  = 0.00
@@ -195,6 +195,49 @@ def _clear_cell(cell):
 
         p = cell.paragraphs[0]._element
         p.getparent().remove(p)
+
+
+def _add_divider(
+    container,
+    weight_pt=1,
+    color=BLACK,
+    space_before=1,
+    space_after=1,
+):
+    """
+    Add a thin horizontal rule spanning the full width of the
+    container, using a paragraph bottom border.
+
+    weight_pt: line thickness in points (1 or 2 looks best
+    at label scale).
+    """
+
+    p = container.add_paragraph()
+
+    fmt = p.paragraph_format
+    fmt.space_before = Pt(space_before)
+    fmt.space_after  = Pt(space_after)
+    fmt.line_spacing = 1.0
+    fmt.keep_together = True
+    fmt.keep_with_next = False
+
+    pPr = p._p.get_or_add_pPr()
+
+    pBdr = OxmlElement("w:pBdr")
+
+    bottom = OxmlElement("w:bottom")
+    bottom.set(qn("w:val"), "single")
+    bottom.set(qn("w:sz"), str(int(weight_pt * 8)))  # eighths of a point
+    bottom.set(qn("w:space"), "1")
+    bottom.set(
+        qn("w:color"),
+        "%02X%02X%02X" % (color[0], color[1], color[2]),
+    )
+
+    pBdr.append(bottom)
+    pPr.append(pBdr)
+
+    return p
 
 ##############################################################################
 # Document Setup
@@ -745,7 +788,7 @@ def _draw_seed_label(
 
     _add_text(
         cell,
-        "Cochise County Master Gardener's Seed Library",
+        "CCMGA Seed Library",
         size=TITLE_SIZE,
         bold=True,
         color=GREEN,
@@ -796,6 +839,15 @@ def _draw_seed_label(
             color=RED,
             align=WD_ALIGN_PARAGRAPH.CENTER,
         )
+
+    ##########################################################################
+    # Divider between heading block and content area
+    ##########################################################################
+
+    _add_divider(
+        cell,
+        weight_pt=1,
+    )
 
     ##########################################################################
     # Two-column content area
