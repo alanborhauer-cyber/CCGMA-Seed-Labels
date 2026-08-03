@@ -745,7 +745,7 @@ def _draw_seed_label(
 
     _add_text(
         cell,
-        "CCMGA Seed Library",
+        "Cochise County Master Gardener's Seed Library",
         size=TITLE_SIZE,
         bold=True,
         color=GREEN,
