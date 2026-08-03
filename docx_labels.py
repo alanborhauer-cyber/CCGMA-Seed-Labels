@@ -67,8 +67,7 @@ RIGHT_MARGIN  = 0.125
 LABEL_WIDTH   = 4.00
 LABEL_HEIGHT  = 2.00
 
-GUTTER_WIDTH  = 0.25
-FILLER_WIDTH  = 0.125
+GUTTER_WIDTH  = 0.125
 
 ROWS = 5
 COLS = 3
@@ -450,38 +449,6 @@ def _add_field(
     value_run.font.size = Pt(size)
     value_run.bold = False
     value_run.font.color.rgb = BLACK
-
-def _add_field(
-    container,
-    label,
-    value,
-):
-    """
-    Add a compact right-side field such as:
-
-        Year: 2026
-
-    with the label in bold and the value in regular weight.
-    """
-
-    if value is None:
-        return
-
-    value = str(value).strip()
-
-    if not value:
-        return
-
-    p = _paragraph(container)
-
-    r1 = p.add_run(f"{label}: ")
-    r1.bold = True
-    r1.font.name = "Arial"
-    r1.font.size = Pt(BODY_SIZE)
-
-    r2 = p.add_run(value)
-    r2.font.name = "Arial"
-    r2.font.size = Pt(BODY_SIZE)
 
 
 ##############################################################################
@@ -1029,7 +996,7 @@ def _new_page(document):
     paragraph.paragraph_format.space_after = Pt(0)
     paragraph.paragraph_format.line_spacing = 1.0
 
-    from docx.enum.text import WD_BREAK
+ 
     paragraph.add_run().add_break(    
         WD_BREAK.PAGE
     )
