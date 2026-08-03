@@ -78,7 +78,7 @@ LABELS_PER_PAGE = 10
 # Internal padding for each label cell, in inches.
 # Increase LABEL_PAD_TOP if content starts too close to the
 # top edge of the label; increase LABEL_PAD_BOTTOM similarly.
-LABEL_PAD_TOP    = 0.05
+LABEL_PAD_TOP    = 0.2
 LABEL_PAD_BOTTOM = 0.00
 LABEL_PAD_LEFT   = 0.00
 LABEL_PAD_RIGHT  = 0.00
