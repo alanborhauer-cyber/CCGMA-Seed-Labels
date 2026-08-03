@@ -48,7 +48,7 @@ FAMILY_SIZE  = 11
 VARIETY_SIZE = 10
 
 BODY_SIZE    = 8
-SMALL_SIZE   = 8
+SMALL_SIZE   = 7
 TINY_SIZE    = 6
 
 
@@ -78,10 +78,11 @@ LABELS_PER_PAGE = 10
 # Internal padding for each label cell, in inches.
 # Increase LABEL_PAD_TOP if content starts too close to the
 # top edge of the label; increase LABEL_PAD_BOTTOM similarly.
-LABEL_PAD_TOP    = 0.2
+LABEL_PAD_TOP    = 0.05
 LABEL_PAD_BOTTOM = 0.00
 LABEL_PAD_LEFT   = 0.00
 LABEL_PAD_RIGHT  = 0.00
+
 
 ##############################################################################
 # XML Helpers
@@ -411,56 +412,6 @@ def _add_field(
     container,
     label,
     value,
-    *,
-    size=SMALL_SIZE,
-):
-    """
-    Add one compact metadata field.
-
-    Example:
-
-        Year: 2026
-
-    The field name is bold.
-    The field value is regular.
-    """
-
-    value = _normalize(value)
-
-    if not value:
-        return
-
-    p = _paragraph(
-        container,
-        align=WD_ALIGN_PARAGRAPH.LEFT,
-    )
-
-    p.paragraph_format.space_before = Pt(0)
-    p.paragraph_format.space_after = Pt(0)
-    p.paragraph_format.line_spacing = 1.0
-
-    label_run = p.add_run(
-        f"{label}: "
-    )
-
-    label_run.font.name = "Arial"
-    label_run.font.size = Pt(size)
-    label_run.bold = True
-    label_run.font.color.rgb = BLACK
-
-    value_run = p.add_run(
-        value
-    )
-
-    value_run.font.name = "Arial"
-    value_run.font.size = Pt(size)
-    value_run.bold = False
-    value_run.font.color.rgb = BLACK
-
-def _add_field(
-    container,
-    label,
-    value,
 ):
     """
     Add a compact right-side field such as:
@@ -635,10 +586,10 @@ def _create_page_table(document):
 
             _set_cell_margins(
                 cell,
-                top=0,
-                bottom=0,
-                left=0,
-                right=0,
+                top=int(LABEL_PAD_TOP * 1440),
+                bottom=int(LABEL_PAD_BOTTOM * 1440),
+                left=int(LABEL_PAD_LEFT * 1440),
+                right=int(LABEL_PAD_RIGHT * 1440),
             )
 
     return table
@@ -1221,4 +1172,3 @@ def generate_labels_docx(
     except Exception:
 
         return None
-
