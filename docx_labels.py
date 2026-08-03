@@ -409,7 +409,6 @@ def _content_table(cell):
 # Compact Metadata Field
 ##############################################################################
 
-```python
 def _add_field(
     container,
     label,
