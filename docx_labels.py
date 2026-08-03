@@ -416,8 +416,8 @@ def _add_field(
     *,
     size=SMALL_SIZE,
 ):
-    
-##################
+    """
+
     Add one compact metadata field.
 
     Example:
@@ -426,7 +426,7 @@ def _add_field(
 
     The field name is bold.
     The field value is regular.
-######################
+    """
 
     value = _normalize(value)
 
