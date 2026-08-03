@@ -1840,7 +1840,7 @@ def page_labels():
 
     with btn3:
         gen_docx_clicked = st.button(
-            "Generate Word",
+            "Not Ready",
             type="secondary",
             width="stretch",
             disabled=(n_seeds == 0),
@@ -1850,7 +1850,7 @@ def page_labels():
     with btn4:
         if st.session_state.label_docx_bytes:
             st.download_button(
-                "Download Word",
+                "Not Ready",
                 data=st.session_state.label_docx_bytes,
                 file_name="seed_labels.docx",
                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
