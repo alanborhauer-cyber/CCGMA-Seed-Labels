@@ -324,7 +324,7 @@ def _add_text(
 ##############################################################################
 
 def _content_table(cell):
-    
+    """   
     Create one borderless two-column table inside a 4-inch label.
 
     Left column:
@@ -335,7 +335,7 @@ def _content_table(cell):
         seed-saver information, germination, and soil temperature.
 
     The heading above this table remains full width.
-  
+    """
 
     inner = cell.add_table(
         rows=1,
