@@ -323,8 +323,13 @@ def _add_text(
 # Two-Column Content Table
 ##############################################################################
 
+```python
+##############################################################################
+# Two-Column Content Table
+##############################################################################
+
 def _content_table(cell):
-    """   
+    """
     Create one borderless two-column table inside a 4-inch label.
 
     Left column:
@@ -354,15 +359,23 @@ def _content_table(cell):
     left_width = 2.55
     right_width = 1.45
 
-    inner.columns[0].width = Inches(left_width)
-    inner.columns[1].width = Inches(right_width)
+    inner.columns[0].width = Inches(
+        left_width
+    )
+
+    inner.columns[1].width = Inches(
+        right_width
+    )
 
     ##########################################################################
-    # Configure both cells
+    # Configure both internal cells
     ##########################################################################
 
     for column_number, width in enumerate(
-        (left_width, right_width)
+        (
+            left_width,
+            right_width,
+        )
     ):
 
         content_cell = inner.cell(
@@ -370,7 +383,9 @@ def _content_table(cell):
             column_number,
         )
 
-        _clear_cell(content_cell)
+        _clear_cell(
+            content_cell
+        )
 
         _set_cell_width(
             content_cell,
@@ -393,7 +408,6 @@ def _content_table(cell):
         inner.cell(0, 0),
         inner.cell(0, 1),
     )
-
 
 ##############################################################################
 # Compact Metadata Field
