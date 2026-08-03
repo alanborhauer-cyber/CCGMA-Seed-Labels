@@ -1967,7 +1967,7 @@ if gen_docx_clicked:
 
     if not rows:
         st.info("No seeds found. Click Load All or try a different search.")
-        return
+
 
     st.caption(f"{len(rows)} seed(s) in list. Qty >= 1 = included in PDF.")
 
