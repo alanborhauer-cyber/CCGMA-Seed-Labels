@@ -648,7 +648,7 @@ def _draw_seed_label(
     cell,
     row,
 ):
-
+    """
     Draw one standard CCMGA Seed Library label.
 
     Layout:
@@ -669,7 +669,7 @@ def _draw_seed_label(
             Seed Saver
             Germination
             Soil Temperature
-
+    """
 
     ##########################################################################
     # Read seed information
