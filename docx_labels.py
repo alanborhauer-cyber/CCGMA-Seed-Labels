@@ -10,7 +10,6 @@
 from io import BytesIO
 
 from docx import Document
-
 from docx.enum.section import WD_SECTION
 from docx.enum.table import (
     WD_ROW_HEIGHT_RULE,
@@ -321,6 +320,136 @@ def _add_text(
 
     run.font.color.rgb = color
 
+##############################################################################
+# Two-Column Content Table
+##############################################################################
+
+def _content_table(cell):
+    
+    Create one borderless two-column table inside a 4-inch label.
+
+    Left column:
+        Comments and descriptive information
+
+    Right column:
+        Year, season, edible status, seed count,
+        seed-saver information, germination, and soil temperature.
+
+    The heading above this table remains full width.
+  
+
+    inner = cell.add_table(
+        rows=1,
+        cols=2,
+    )
+
+    inner.autofit = False
+    inner.alignment = WD_TABLE_ALIGNMENT.LEFT
+
+    _remove_table_borders(inner)
+
+    ##########################################################################
+    # Fixed column widths
+    ##########################################################################
+
+    left_width = 2.55
+    right_width = 1.45
+
+    inner.columns[0].width = Inches(left_width)
+    inner.columns[1].width = Inches(right_width)
+
+    ##########################################################################
+    # Configure both cells
+    ##########################################################################
+
+    for column_number, width in enumerate(
+        (left_width, right_width)
+    ):
+
+        content_cell = inner.cell(
+            0,
+            column_number,
+        )
+
+        _clear_cell(content_cell)
+
+        _set_cell_width(
+            content_cell,
+            width,
+        )
+
+        _set_cell_margins(
+            content_cell,
+            top=0,
+            bottom=0,
+            left=0,
+            right=0,
+        )
+
+        content_cell.vertical_alignment = (
+            WD_CELL_VERTICAL_ALIGNMENT.TOP
+        )
+
+    return (
+        inner.cell(0, 0),
+        inner.cell(0, 1),
+    )
+
+
+##############################################################################
+# Compact Metadata Field
+##############################################################################
+
+def _add_field(
+    container,
+    label,
+    value,
+    *,
+    size=SMALL_SIZE,
+):
+    
+##################
+    Add one compact metadata field.
+
+    Example:
+
+        Year: 2026
+
+    The field name is bold.
+    The field value is regular.
+######################
+
+    value = _normalize(value)
+
+    if not value:
+        return
+
+    p = _paragraph(
+        container,
+        align=WD_ALIGN_PARAGRAPH.LEFT,
+    )
+
+    p.paragraph_format.space_before = Pt(0)
+    p.paragraph_format.space_after = Pt(0)
+    p.paragraph_format.line_spacing = 1.0
+
+    label_run = p.add_run(
+        f"{label}: "
+    )
+
+    label_run.font.name = "Arial"
+    label_run.font.size = Pt(size)
+    label_run.bold = True
+    label_run.font.color.rgb = BLACK
+
+    value_run = p.add_run(
+        value
+    )
+
+    value_run.font.name = "Arial"
+    value_run.font.size = Pt(size)
+    value_run.bold = False
+    value_run.font.color.rgb = BLACK
 
 def _add_field(
     container,
