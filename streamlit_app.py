@@ -1422,7 +1422,7 @@ def page_browse():
     # -- Detail / Edit panel -------------------------------------
     st.markdown("#### View or Edit a Record")
     fn_options = {f"#{r['FileNumber']}  {r['Family']} -- {r['Variety']}": r["FileNumber"]
-                  for r in unique}
+                  for r in rows}
     chosen_label = st.selectbox("Select seed", list(fn_options.keys()),
                                 key="browse_select")
     chosen_fn = fn_options[chosen_label]
@@ -1859,7 +1859,7 @@ def page_labels():
             )
         else:
             st.button(
-                "Not Ready",
+                "Download Word",
                 disabled=True,
                 width="stretch"
             )
