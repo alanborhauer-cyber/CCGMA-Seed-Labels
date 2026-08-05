@@ -16,15 +16,6 @@ import smtplib
 from email.mime.text import MIMEText
 from datetime import datetime, timedelta
 import streamlit as st
-from io import BytesIO
-from docx import Document
-from docx.shared import Inches
-from docx.shared import Pt
-from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.enum.table import WD_TABLE_ALIGNMENT
-from docx.oxml.shared import OxmlElement
-from docx.oxml.ns import qn
-from docx_labels import generate_labels_docx
 
 # -------------------------------------------------------------
 # PAGE CONFIG (must be first Streamlit call)
@@ -93,7 +84,7 @@ def _auth_login(col):
     email    = st.text_input("Email", key="login_email")
     password = st.text_input("Password", type="password", key="login_pw")
 
-    if st.button("Log In", width='stretch', type="primary"):
+    if st.button("Log In", use_container_width=True, type="primary"):
             if not email or not password:
                 st.error("Please enter email and password.")
             else:
@@ -118,7 +109,7 @@ def _auth_login(col):
                     st.session_state.pop("current_page", None)
                     st.session_state.pop("_prev_selected", None)
                     st.rerun()
-    if st.button("Register", width='stretch'):
+    if st.button("Register", use_container_width=True):
         st.session_state.auth_step = "register"
         st.rerun()
 
@@ -130,7 +121,7 @@ def _auth_register(col):
     password = st.text_input("Password",             key="reg_pw",   type="password")
     confirm  = st.text_input("Confirm Password",     key="reg_pw2",  type="password")
 
-    if st.button("Sign Up", width='stretch', type="primary"):
+    if st.button("Sign Up", use_container_width=True, type="primary"):
             if not all([name, email, password, confirm]):
                 st.error("All fields are required.")
             elif password != confirm:
@@ -155,7 +146,7 @@ def _auth_register(col):
                     st.rerun()
                 else:
                     st.error(f"Registration error: {result}")
-    if st.button("Back to Login", width='stretch'):
+    if st.button("Back to Login", use_container_width=True):
         st.session_state.auth_step = "login"
         st.rerun()
 
@@ -168,7 +159,7 @@ def _auth_verify(col):
 
     c1, c2, c3 = st.columns(3)
     with c1:
-        if st.button("Verify", width='stretch', type="primary"):
+        if st.button("Verify", use_container_width=True, type="primary"):
             if not code or len(code) != 6:
                 st.error("Enter the 6-digit code.")
             else:
@@ -185,8 +176,8 @@ def _auth_verify(col):
                     st.error("Invalid code. Please try again.")
                     
     with c2:
-        # Fixed: Changed width="stretch" to width='stretch'
-        if st.button("Resend Code", width='stretch'):
+        # Fixed: Changed width="stretch" to use_container_width=True
+        if st.button("Resend Code", use_container_width=True):
             with st.spinner("Sending..."):
                 success = user_resend_code(email)
             # Fixed: Moved the success check inside the button scope
@@ -196,7 +187,7 @@ def _auth_verify(col):
                 st.error("Failed to send. Contact admin.")
         
     with c3:
-        if st.button("Back to Login", width='stretch'):
+        if st.button("Back to Login", use_container_width=True):
             st.session_state.auth_step = "login"
             st.rerun()
 
@@ -244,7 +235,7 @@ st.markdown("""
         color: white;
         margin: 0;
         font-size: clamp(1.1rem, 4vw, 1.6rem);
-        line-height: 1.0;
+        line-height: 1.3;
     }
     .ccmga-title p {
         color: #c8e6c9;
@@ -395,28 +386,16 @@ CREATE_SQL = """
 # POSTGRESQL DATABASE LAYER
 # -------------------------------------------------------------
 
-import streamlit as st
-import psycopg2
-
 def get_pg_conn():
+    """Return a psycopg2 connection using st.secrets["DATABASE_URL"]."""
     import psycopg2
     import psycopg2.extras
-
     url = st.secrets["DATABASE_URL"]
+    conn = psycopg2.connect(url, cursor_factory=psycopg2.extras.RealDictCursor)
+    conn.autocommit = False
+    return conn
 
-    try:
-        conn = psycopg2.connect(
-            url,
-            connect_timeout=10,
-            cursor_factory=psycopg2.extras.RealDictCursor,
-        )
-        conn.autocommit = False
-        return conn
 
-    except Exception as e:
-        st.exception(e)
-        raise
-    
 CREATE_USERS_SQL = """
     CREATE TABLE IF NOT EXISTS app_users (
         id             SERIAL PRIMARY KEY,
@@ -549,10 +528,16 @@ def init_db():
         return
     try:
         _ensure_table()
-        st.success("Database tables initialized successfully")
+        if not _seed_table_populated():
+            _load_from_xlsx_to_pg()
+        else:
+            count = db_count()
+            st.session_state["db_status"] = "ok"
+            st.session_state["db_msg"] = f"✅ Connected -- {count:,} seeds in PostgreSQL."
+        st.session_state["db_ready"] = True
     except Exception as e:
-        st.exception(e)
-        st.stop()
+        st.session_state["db_status"] = "error"
+        st.session_state["db_msg"] = f"[x] Database connection error: {e}"
 
 
 # -- CRUD -----------------------------------------------------
@@ -576,38 +561,16 @@ def db_search(term: str = "") -> list[dict]:
         """, (t, t, t))
     else:
         cur.execute('SELECT * FROM seeds ORDER BY "FileNumber"')
-    # Coerce None -> "" and normalize line endings, but keep FileNumber as int.
-    # Windows-style CRLF/CR line breaks in a stored value cause a browser's
-    # <textarea> to silently re-normalize them to LF when reading the field
-    # back out -- since that differs from what React/Streamlit thinks is in
-    # the box, it forces a resync on every keystroke that snaps the cursor
-    # to the end. Normalizing here fixes it everywhere the data is used.
+    # Coerce None ? "" but keep FileNumber as int
     def clean_row(r):
         d = dict(r)
-        out = {}
-        for k, v in d.items():
-            if k == "FileNumber" and v is not None:
-                out[k] = int(v)
-            elif v is None:
-                out[k] = ""
-            else:
-                out[k] = str(v).replace("\r\n", "\n").replace("\r", "\n").strip()
-        return out
+        return {k: (int(v) if k == "FileNumber" and v is not None
+                    else str(v).strip() if v is not None else "")
+                for k, v in d.items()}
     rows = [clean_row(r) for r in cur.fetchall()]
     cur.close()
     conn.close()
     return rows
-
-
-def _normalize_line_endings(v):
-    """
-    Normalize CRLF/CR line breaks to plain LF before writing to the
-    database, so text saved from any browser/OS is consistent and
-    doesn't cause a textarea cursor-jump bug on the way back out.
-    """
-    if isinstance(v, str):
-        return v.replace("\r\n", "\n").replace("\r", "\n")
-    return v
 
 
 def db_add(data: dict):
@@ -620,7 +583,7 @@ def db_add(data: dict):
          "Edible","WhereGrown","PerennialAnnual","GrownBy","Year",
          "SoilTemperature","Germination","BackgroundInfo")
         VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-    """, tuple(_normalize_line_endings(data.get(c, "")) for c in COLS))
+    """, tuple(data.get(c, "") for c in COLS))
     conn.commit()
     cur.close()
     conn.close()
@@ -638,14 +601,14 @@ def db_update(fn: int, data: dict):
             "SoilTemperature"=%s, "Germination"=%s, "BackgroundInfo"=%s
         WHERE "FileNumber"=%s
     """, (
-        _normalize_line_endings(data.get("Family","")),        _normalize_line_endings(data.get("Variety","")),
-        _normalize_line_endings(data.get("SeedSource","")),    _normalize_line_endings(data.get("Comments","")),
-        _normalize_line_endings(data.get("NumSeeds","")),      _normalize_line_endings(data.get("Season","")),
-        _normalize_line_endings(data.get("SeedSaverLevel","")),_normalize_line_endings(data.get("HybridDoNotSave","")),
-        _normalize_line_endings(data.get("Edible","")),        _normalize_line_endings(data.get("WhereGrown","")),
-        _normalize_line_endings(data.get("PerennialAnnual","")),_normalize_line_endings(data.get("GrownBy","")),
-        _normalize_line_endings(data.get("Year","")),          _normalize_line_endings(data.get("SoilTemperature","")),
-        _normalize_line_endings(data.get("Germination","")),   _normalize_line_endings(data.get("BackgroundInfo","")),
+        data.get("Family",""),        data.get("Variety",""),
+        data.get("SeedSource",""),    data.get("Comments",""),
+        data.get("NumSeeds",""),      data.get("Season",""),
+        data.get("SeedSaverLevel",""),data.get("HybridDoNotSave",""),
+        data.get("Edible",""),        data.get("WhereGrown",""),
+        data.get("PerennialAnnual",""),data.get("GrownBy",""),
+        data.get("Year",""),          data.get("SoilTemperature",""),
+        data.get("Germination",""),   data.get("BackgroundInfo",""),
         fn,
     ))
     conn.commit()
@@ -779,28 +742,19 @@ def _send_verification_email(to_email: str, code: str) -> tuple:
 def user_login(email: str, password: str) -> dict | None:
     """Return user dict if credentials valid, else None."""
     conn = get_pg_conn()
-    cur = conn.cursor()
-
+    cur  = conn.cursor()
     cur.execute(
-        "SELECT * FROM app_users WHERE email = %s",
-        (email.lower().strip(),)
-    )
-
+        "SELECT * FROM app_users WHERE email = %s", (email.lower().strip(),))
     row = cur.fetchone()
-
     cur.close()
     conn.close()
-
-    if row is None:
+    if not row:
         return None
-
-    # Convert the returned row to a normal dictionary
     user = dict(row)
-
     if not _check_password_hash(password, user["password_hash"]):
         return None
-
     return user
+
 
 def user_register(email: str, full_name: str, password: str) -> str:
     """
@@ -1045,32 +999,20 @@ def generate_labels_pdf(label_data: list,
     if not labels:
         return None
 
-                            # Printer calibration
-    X_OFFSET = 0.00 * inch
-    Y_OFFSET = 0.00 * inch
-    
-    # Avery 94207 geometry
-    PAGE_W, PAGE_H = letter
+    # Avery 94207 exact dimensions
+    PAGE_W, PAGE_H  = letter              # 8.5 x 11 inches
+    MARGIN_TOP      = 0.4 * inch
+    MARGIN_LEFT     = 0.25 * inch
+    MARGIN_RIGHT    = 0.25 * inch
+    LABEL_W         = 4.00 * inch         # hard-coded, not calculated
+    LABEL_H         = 2.00 * inch
+    GUTTER          = 0.125 * inch
+    LEFT_X          = 0.25 * inch         # left edge of col 0
+    RIGHT_X         = 4.375 * inch        # 0.25 + 4.00 + 0.125
+    COLS, ROWS      = 2, 5
+    PER_PAGE        = COLS * ROWS
 
-    MARGIN_TOP = 0.50 * inch
-    LEFT_X = 0.25 * inch
-
-    LABEL_W = 4.00 * inch
-    LABEL_H = 2.00 * inch
-    
-    GUTTER = 0.125 * inch
-    
-    # Distance between label origins
-    COLUMN_PITCH = LABEL_W + GUTTER
-    
-    # Fine-tune only the right column
-    RIGHT_COLUMN_ADJUST = 0.09 * inch
-    
-    COLS = 2
-    ROWS = 5
-    PER_PAGE = COLS * ROWS
-
-    PAD_L, PAD_R, PAD_T, PAD_B = 4, 4, 1, 2
+    PAD_L, PAD_R, PAD_T, PAD_B = 4, 4, 3, 3
     TITLE_H         = 24
     LEFT_FRAC       = 2 / 3
 
@@ -1080,20 +1022,20 @@ def generate_labels_pdf(label_data: list,
 
     title_sty = ParagraphStyle("ttl", fontSize=10, fontName="Helvetica-Bold",
         textColor=GREEN, alignment=TA_CENTER, leading=12, spaceAfter=0)
-    fam_sty = ParagraphStyle("fam", fontSize=9, fontName="Helvetica-Bold",
+    fam_sty = ParagraphStyle("fam", fontSize=10, fontName="Helvetica-Bold",
         textColor=colors.red, alignment=TA_LEFT, leading=12, spaceAfter=1)
-    var_sty = ParagraphStyle("var", fontSize=9, fontName="Helvetica-Oblique",
+    var_sty = ParagraphStyle("var", fontSize=10, fontName="Helvetica-Oblique",
         textColor=colors.black, alignment=TA_LEFT, leading=12, spaceAfter=2)
-    cmt_sty = ParagraphStyle("cmt", fontSize=8, fontName="Helvetica",
+    cmt_sty = ParagraphStyle("cmt", fontSize=9, fontName="Helvetica",
         textColor=colors.black, alignment=TA_LEFT, leading=11, spaceAfter=0)
-    rgt_sty = ParagraphStyle("rgt", fontSize=8, fontName="Helvetica",
+    rgt_sty = ParagraphStyle("rgt", fontSize=9, fontName="Helvetica",
         textColor=colors.black, alignment=TA_CENTER, leading=11, spaceAfter=1)
-    rit_sty = ParagraphStyle("rit", fontSize=8, fontName="Helvetica-Oblique",
+    rit_sty = ParagraphStyle("rit", fontSize=9, fontName="Helvetica-Oblique",
         textColor=colors.black, alignment=TA_CENTER, leading=11, spaceAfter=1)
     svr_sty = ParagraphStyle("svr", fontSize=7, fontName="Helvetica-Bold",
         textColor=colors.black, alignment=TA_CENTER, leading=9,
         spaceAfter=1, wordWrap="LTR")
-    grm_sty = ParagraphStyle("grm", fontSize=7, fontName="Helvetica",
+    grm_sty = ParagraphStyle("grm", fontSize=8, fontName="Helvetica",
         textColor=colors.black, alignment=TA_CENTER, leading=10, spaceAfter=0)
 
     buf = io.BytesIO()
@@ -1106,20 +1048,8 @@ def generate_labels_pdf(label_data: list,
         for slot, (row, is_bg) in enumerate(page_labels):
             col_num = slot % COLS
             row_num = slot // COLS
-
-            # Compute X position
-            lx = LEFT_X + (col_num * COLUMN_PITCH) + X_OFFSET
-            
-            # Fine-tune only the right column
-            if col_num == 1:
-                lx += RIGHT_COLUMN_ADJUST
-            
-            # Compute Y position
-            ly = PAGE_H - MARGIN_TOP - (row_num + 1) * LABEL_H + Y_OFFSET
-            
-            # Round coordinates
-            lx = round(lx, 3)
-            ly = round(ly, 3)
+            lx = LEFT_X if col_num == 0 else RIGHT_X
+            ly = PAGE_H - MARGIN_TOP - (row_num + 1) * LABEL_H
 
             # Extract fields (needed for both label types)
             family   = (row.get("Family")          or "").strip()
@@ -1156,7 +1086,7 @@ def generate_labels_pdf(label_data: list,
                     textColor=colors.black, alignment=TA_LEFT,
                     leading=13, spaceAfter=4)
                 bg_body_sty = ParagraphStyle("bgbody",
-                    fontSize=8, fontName="Helvetica",
+                    fontSize=9, fontName="Helvetica",
                     textColor=colors.black, alignment=TA_LEFT,
                     leading=12, spaceAfter=0)
 
@@ -1252,7 +1182,6 @@ def generate_labels_pdf(label_data: list,
         page_idx += 1
 
     c.save()
-    buf.seek(0)
     return buf.getvalue()
 
 
@@ -1269,7 +1198,7 @@ def show_download_bar():
             file_name="_SEED_LIBRARY_PARSED.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             help="Download and replace your local xlsx file to keep changes permanent.",
-            width='stretch',
+            use_container_width=True,
         )
 
 
@@ -1339,7 +1268,7 @@ def page_home():
 |---|---|
 | **Built for** | Cochise County Master Gardener Association |
 | **Labels** | For use with Avery 94207 Labels (2" x 4", 10 per sheet) |
-| **Version** | 3.0 7.12.2026 |
+| **Version** | 2.1 6.8.2026 |
     """)
 
     # -- Seeds with comments or background info over 300 chars -------
@@ -1368,7 +1297,7 @@ def page_home():
         import pandas as pd
         st.dataframe(
             pd.DataFrame(rows_display),
-            width='stretch',
+            use_container_width=True,
             hide_index=True,
         )
 
@@ -1384,9 +1313,9 @@ def page_browse():
                          key="browse_search")
     c_s1, c_s2 = st.columns(2)
     with c_s1:
-        search_clicked = st.button("Search", width='stretch')
+        search_clicked = st.button("Search", use_container_width=True)
     with c_s2:
-        show_all = st.button("Show All", width='stretch')
+        show_all = st.button("Show All", use_container_width=True)
     if show_all:
         st.session_state.browse_term = ""
     elif search_clicked:
@@ -1436,7 +1365,7 @@ def page_browse():
                   "Season", "# Seeds", "Saver Level",
                   "Perennial/Annual", "Grown By", "Year"]
 
-    st.dataframe(df, width='stretch', hide_index=True,
+    st.dataframe(df, use_container_width=True, hide_index=True,
                  height=320)
 
     st.markdown("---")
@@ -1444,7 +1373,7 @@ def page_browse():
     # -- Detail / Edit panel -------------------------------------
     st.markdown("#### View or Edit a Record")
     fn_options = {f"#{r['FileNumber']}  {r['Family']} -- {r['Variety']}": r["FileNumber"]
-                  for r in rows}
+                  for r in unique}
     chosen_label = st.selectbox("Select seed", list(fn_options.keys()),
                                 key="browse_select")
     chosen_fn = fn_options[chosen_label]
@@ -1457,19 +1386,19 @@ def page_browse():
         ba1, ba2, ba3 = st.columns(3)
         with ba1:
             if st.button("View",
-                         width='stretch',
+                         use_container_width=True,
                          type="primary" if st.session_state.browse_action == "View" else "secondary"):
                 st.session_state.browse_action = "View"
                 st.rerun()
         with ba2:
             if st.button("Edit",
-                         width='stretch',
+                         use_container_width=True,
                          type="primary" if st.session_state.browse_action == "Edit" else "secondary"):
                 st.session_state.browse_action = "Edit"
                 st.rerun()
         with ba3:
             if st.button("Duplicate",
-                         width='stretch',
+                         use_container_width=True,
                          type="primary" if st.session_state.browse_action == "Duplicate as New Record" else "secondary"):
                 st.session_state.browse_action = "Duplicate as New Record"
                 st.rerun()
@@ -1537,53 +1466,37 @@ def _browse_edit_form(row: dict, is_duplicate: bool = False):
         c1 = st.container()
         c2 = st.container()
         with c1:
-            family  = st.text_input("Family",       value=row.get("Family",""),
-                                    key=f"edit_family_{fn}")
-            variety = st.text_input("Variety",       value=row.get("Variety",""),
-                                    key=f"edit_variety_{fn}")
-            source  = st.text_input("Seed Source",   value=row.get("SeedSource",""),
-                                    key=f"edit_source_{fn}")
+            family  = st.text_input("Family",       value=row.get("Family",""))
+            variety = st.text_input("Variety",       value=row.get("Variety",""))
+            source  = st.text_input("Seed Source",   value=row.get("SeedSource",""))
             comments= st.text_area("Comments",       value=row.get("Comments",""), height=100,
-                                   help="Max 300 chars for label printing", max_chars=300,
-                                   key=f"edit_comments_{fn}")
-            grown_by= st.text_input("Grown By",      value=row.get("GrownBy",""),
-                                    key=f"edit_grownby_{fn}")
-            where   = st.text_input("Where Grown",   value=row.get("WhereGrown",""),
-                                    key=f"edit_where_{fn}")
+                                   help="Max 300 chars for label printing", max_chars=300)
+            grown_by= st.text_input("Grown By",      value=row.get("GrownBy",""))
+            where   = st.text_input("Where Grown",   value=row.get("WhereGrown",""))
         with c2:
-            year    = st.text_input("Year",          value=row.get("Year",""),
-                                    key=f"edit_year_{fn}")
-            numseeds= st.text_input("# of Seeds",    value=row.get("NumSeeds",""),
-                                    key=f"edit_numseeds_{fn}")
-            edible  = st.text_input("Edible",        value=row.get("Edible",""),
-                                    key=f"edit_edible_{fn}")
+            year    = st.text_input("Year",          value=row.get("Year",""))
+            numseeds= st.text_input("# of Seeds",    value=row.get("NumSeeds",""))
+            edible  = st.text_input("Edible",        value=row.get("Edible",""))
             season_v= row.get("Season","")
             season  = st.selectbox("Season", SEASON_OPTS,
                                    index=SEASON_OPTS.index(season_v)
-                                   if season_v in SEASON_OPTS else 0,
-                                   key=f"edit_season_{fn}")
+                                   if season_v in SEASON_OPTS else 0)
             saver_v = row.get("SeedSaverLevel","")
             saver   = st.selectbox("Seed Saver Level", SAVER_OPTS,
                                    index=SAVER_OPTS.index(saver_v)
-                                   if saver_v in SAVER_OPTS else 0,
-                                   key=f"edit_saver_{fn}")
+                                   if saver_v in SAVER_OPTS else 0)
             peran_v = row.get("PerennialAnnual","")
             peran   = st.selectbox("Perennial/Annual", PERAN_OPTS,
                                    index=PERAN_OPTS.index(peran_v)
-                                   if peran_v in PERAN_OPTS else 0,
-                                   key=f"edit_peran_{fn}")
-            hybrid  = st.text_input("Hybrid-Do Not Save", value=row.get("HybridDoNotSave",""),
-                                    key=f"edit_hybrid_{fn}")
-            soil_t  = st.text_input("Soil Temperature",   value=row.get("SoilTemperature",""),
-                                    key=f"edit_soilt_{fn}")
-            germ    = st.text_input("Germination",        value=row.get("Germination",""),
-                                    key=f"edit_germ_{fn}")
+                                   if peran_v in PERAN_OPTS else 0)
+            hybrid  = st.text_input("Hybrid-Do Not Save", value=row.get("HybridDoNotSave",""))
+            soil_t  = st.text_input("Soil Temperature",   value=row.get("SoilTemperature",""))
+            germ    = st.text_input("Germination",        value=row.get("Germination",""))
         bg_info = st.text_area("Background Info",
                                value=row.get("BackgroundInfo",""), height=80,
-                               help="Max 300 chars for label printing", max_chars=300,
-                               key=f"edit_bginfo_{fn}")
+                               help="Max 300 chars for label printing", max_chars=300)
 
-        if st.form_submit_button("Save Changes", width='stretch'):
+        if st.form_submit_button("Save Changes", use_container_width=True):
             db_update(fn, {
                 "Family": family, "Variety": variety,
                 "SeedSource": source, "Comments": comments,
@@ -1600,66 +1513,48 @@ def _browse_edit_form(row: dict, is_duplicate: bool = False):
 
 def _browse_duplicate_form(source_row: dict):
     """Duplicate a seed record with a new file number."""
-    src_fn = source_row["FileNumber"]
     next_fn = db_next_fn()
     st.info(f"Duplicating **#{source_row['FileNumber']} {source_row['Family']} -- "
             f"{source_row['Variety']}** as new record **#{next_fn}**. "
             "Edit any fields then save.")
-    with st.form(key=f"dup_form_{src_fn}_{next_fn}"):
+    with st.form(key=f"dup_form_{source_row['FileNumber']}"):
         c1 = st.container()
         c2 = st.container()
         with c1:
             fn      = st.number_input("File Number *", value=next_fn,
-                                      min_value=1, step=1,
-                                      key=f"dup_fn_{src_fn}_{next_fn}")
-            family  = st.text_input("Family",     value=source_row.get("Family",""),
-                                    key=f"dup_family_{src_fn}_{next_fn}")
-            variety = st.text_input("Variety",    value=source_row.get("Variety",""),
-                                    key=f"dup_variety_{src_fn}_{next_fn}")
-            source  = st.text_input("Seed Source",value=source_row.get("SeedSource",""),
-                                    key=f"dup_source_{src_fn}_{next_fn}")
-            comments= st.text_area("Comments",    value=source_row.get("Comments",""), height=80,
-                                    key=f"dup_comments_{src_fn}_{next_fn}")
-            grown_by= st.text_input("Grown By",   value=source_row.get("GrownBy",""),
-                                    key=f"dup_grownby_{src_fn}_{next_fn}")
-            where   = st.text_input("Where Grown",value=source_row.get("WhereGrown",""),
-                                    key=f"dup_where_{src_fn}_{next_fn}")
+                                      min_value=1, step=1)
+            family  = st.text_input("Family",     value=source_row.get("Family",""))
+            variety = st.text_input("Variety",    value=source_row.get("Variety",""))
+            source  = st.text_input("Seed Source",value=source_row.get("SeedSource",""))
+            comments= st.text_area("Comments",    value=source_row.get("Comments",""), height=80)
+            grown_by= st.text_input("Grown By",   value=source_row.get("GrownBy",""))
+            where   = st.text_input("Where Grown",value=source_row.get("WhereGrown",""))
         with c2:
-            year    = st.text_input("Year",       value=source_row.get("Year",""),
-                                    key=f"dup_year_{src_fn}_{next_fn}")
-            numseeds= st.text_input("# of Seeds", value=source_row.get("NumSeeds",""),
-                                    key=f"dup_numseeds_{src_fn}_{next_fn}")
-            edible  = st.text_input("Edible",     value=source_row.get("Edible",""),
-                                    key=f"dup_edible_{src_fn}_{next_fn}")
+            year    = st.text_input("Year",       value=source_row.get("Year",""))
+            numseeds= st.text_input("# of Seeds", value=source_row.get("NumSeeds",""))
+            edible  = st.text_input("Edible",     value=source_row.get("Edible",""))
             season_v = source_row.get("Season","")
             season  = st.selectbox("Season", SEASON_OPTS,
                                    index=SEASON_OPTS.index(season_v)
-                                   if season_v in SEASON_OPTS else 0,
-                                   key=f"dup_season_{src_fn}_{next_fn}")
+                                   if season_v in SEASON_OPTS else 0)
             saver_v = source_row.get("SeedSaverLevel","")
             saver   = st.selectbox("Seed Saver Level", SAVER_OPTS,
                                    index=SAVER_OPTS.index(saver_v)
-                                   if saver_v in SAVER_OPTS else 0,
-                                   key=f"dup_saver_{src_fn}_{next_fn}")
+                                   if saver_v in SAVER_OPTS else 0)
             peran_v = source_row.get("PerennialAnnual","")
             peran   = st.selectbox("Perennial/Annual", PERAN_OPTS,
                                    index=PERAN_OPTS.index(peran_v)
-                                   if peran_v in PERAN_OPTS else 0,
-                                   key=f"dup_peran_{src_fn}_{next_fn}")
+                                   if peran_v in PERAN_OPTS else 0)
             hybrid  = st.text_input("Hybrid-Do Not Save",
-                                    value=source_row.get("HybridDoNotSave",""),
-                                    key=f"dup_hybrid_{src_fn}_{next_fn}")
+                                    value=source_row.get("HybridDoNotSave",""))
             soil_t  = st.text_input("Soil Temperature",
-                                    value=source_row.get("SoilTemperature",""),
-                                    key=f"dup_soilt_{src_fn}_{next_fn}")
+                                    value=source_row.get("SoilTemperature",""))
             germ    = st.text_input("Germination",
-                                    value=source_row.get("Germination",""),
-                                    key=f"dup_germ_{src_fn}_{next_fn}")
+                                    value=source_row.get("Germination",""))
         bg_info = st.text_area("Background Info",
-                               value=source_row.get("BackgroundInfo",""), height=80,
-                               key=f"dup_bginfo_{src_fn}_{next_fn}")
+                               value=source_row.get("BackgroundInfo",""), height=80)
 
-        if st.form_submit_button("Save as New Record", width='stretch'):
+        if st.form_submit_button("Save as New Record", use_container_width=True):
             fn = int(fn)
             _conn = get_pg_conn()
             _cur  = _conn.cursor()
@@ -1723,7 +1618,7 @@ def page_add():
                                help="Maximum 300 characters for label printing",
                                max_chars=300)
 
-        submitted = st.form_submit_button("Save Seed", width='stretch')
+        submitted = st.form_submit_button("Save Seed", use_container_width=True)
 
     if submitted:
         fn = int(fn)
@@ -1764,10 +1659,10 @@ def page_remove():
                          key="remove_search")
     c_r1, c_r2 = st.columns(2)
     with c_r1:
-        if st.button("Search", width='stretch'):
+        if st.button("Search", use_container_width=True):
             st.session_state.remove_term = term
     with c_r2:
-        if st.button("Show All", width='stretch'):
+        if st.button("Show All", use_container_width=True):
             st.session_state.remove_term = ""
 
     active_term = st.session_state.get("remove_term", "")
@@ -1791,7 +1686,7 @@ def page_remove():
 
     edited = st.data_editor(
         df,
-        width='stretch',
+        use_container_width=True,
         hide_index=True,
         height=380,
         column_config={
@@ -1816,7 +1711,7 @@ def page_remove():
             key="remove_confirm")
         if confirm:
             if st.button(f"Delete {n} Selected Record(s)",
-                         type="primary", width='stretch'):
+                         type="primary", use_container_width=True):
                 db_delete(selected_fns)
                 st.success(f"✅ {n} record(s) deleted.")
                 show_download_bar()
@@ -1838,8 +1733,7 @@ def page_labels():
     if "label_qtys"       not in st.session_state: st.session_state.label_qtys       = {}
     if "label_include_bg" not in st.session_state: st.session_state.label_include_bg = False
     if "label_pdf_bytes"  not in st.session_state: st.session_state.label_pdf_bytes  = None
-    if "label_docx_bytes" not in st.session_state: st.session_state.label_docx_bytes = None
-    
+
     # Fetch rows once
     rows       = db_search(st.session_state.label_term)
     row_lookup = {int(r["FileNumber"]): r for r in rows}
@@ -1863,78 +1757,38 @@ def page_labels():
         f"<b>{total_labels}</b> total labels</div>",
         unsafe_allow_html=True)
 
-    btn1, btn2, btn3, btn4, btn5 = st.columns([2.5,2.5,2.5,2.5,1.8])
-# ----------------------------------------------------------
-# Button Row
-# ----------------------------------------------------------
-
+    btn1, btn2, btn3 = st.columns([3, 3, 2])
     with btn1:
-        gen_pdf_clicked = st.button(
+        gen_clicked = st.button(
             "Generate PDF",
             type="primary",
-            width="stretch",
+            use_container_width=True,
             disabled=(n_seeds == 0),
-            key="gen_pdf_btn"
-        )
-
+            key="gen_pdf_btn")
     with btn2:
         if st.session_state.label_pdf_bytes:
             st.download_button(
-                "Download PDF",
+                label="Download seed_labels.pdf",
                 data=st.session_state.label_pdf_bytes,
                 file_name="seed_labels.pdf",
                 mime="application/pdf",
-                width="stretch",
-                key="download_pdf_btn"
-            )
+                use_container_width=True,
+                key="dl_pdf_btn")
         else:
-            st.button(
-                "Download PDF",
-                disabled=True,
-                width="stretch"
-            )
-
+            st.button("Download PDF", disabled=True,
+                      use_container_width=True, key="dl_pdf_btn_off")
     with btn3:
-        gen_docx_clicked = st.button(
-            "Generate Word",
-            type="secondary",
-            width="stretch",
-            disabled=(n_seeds == 0),
-            key="gen_docx_btn"
-        )
-
-    with btn4:
-        if st.session_state.label_docx_bytes:
-            st.download_button(
-                "Download Word",
-                data=st.session_state.label_docx_bytes,
-                file_name="seed_labels.docx",
-                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                width="stretch",
-                key="download_docx_btn"
-            )
-        else:
-            st.button(
-                "Download Word",
-                disabled=True,
-                width="stretch"
-            )
-
-    with btn5:
         bg_active = st.session_state.label_include_bg
-
         if st.button(
-            "BG: ON" if bg_active else "BG: OFF",
-            width="stretch",
-            type="primary" if bg_active else "secondary"
-        ):
-            
+                "BG: ON" if bg_active else "BG: OFF",
+                use_container_width=True,
+                type="primary" if bg_active else "secondary",
+                key="bg_toggle"):
             st.session_state.label_include_bg = not bg_active
-            st.session_state.label_pdf_bytes = None
-            st.session_state.label_docx_bytes = None
+            st.session_state.label_pdf_bytes  = None
             st.rerun()
-        
-    if gen_pdf_clicked:
+
+    if gen_clicked:
         with st.spinner("Generating PDF..."):
             pdf_bytes = generate_labels_pdf(
                 label_data,
@@ -1947,43 +1801,7 @@ def page_labels():
                 "Print at Actual Size (100%). Click Download above.")
             st.rerun()
 
-    if gen_docx_clicked:
-        try:
-            with st.spinner("Generating Word document..."):
-                docx_bytes = generate_labels_docx(
-                    label_data,
-                    include_background=(
-                        st.session_state.label_include_bg
-                    ),
-                )
-
-            if docx_bytes:
-                st.session_state.label_docx_bytes = docx_bytes
-
-                pages = -(-total_labels // 10)
-
-                st.success(
-                    f"Word document ready — "
-                    f"{total_labels} labels across "
-                    f"{pages} page(s)."
-                )
-
-                st.rerun()
-
-            else:
-                st.error(
-                    "Word generation returned no document. "
-                    "Check the end of generate_labels_docx() "
-                    "in docx_labels.py."
-                )
-
-        except Exception as e:
-            st.error(
-                f"Word generation failed: "
-                f"{type(e).__name__}: {e}"
-            )
-    
-    if st.session_state.label_pdf_bytes and not gen_pdf_clicked:
+    if st.session_state.label_pdf_bytes and not gen_clicked:
         pages = -(-total_labels // 10)
         st.caption(f"Last PDF: {total_labels} labels / {pages} page(s). "
                    "Re-generate if selections changed.")
@@ -1998,30 +1816,30 @@ def page_labels():
                          key="label_search")
     sa, sb, sc, sd = st.columns(4)
     with sa:
-        if st.button("Search", width='stretch', key="lbl_srch"):
+        if st.button("Search", use_container_width=True, key="lbl_srch"):
             st.session_state.label_term      = term
             st.session_state.label_pdf_bytes = None
             st.rerun()
     with sb:
-        if st.button("Load All", width='stretch', key="lbl_all"):
+        if st.button("Load All", use_container_width=True, key="lbl_all"):
             st.session_state.label_term      = ""
             st.session_state.label_pdf_bytes = None
             st.rerun()
     with sc:
-        if st.button("Set All to 1", width='stretch', key="lbl_set1"):
+        if st.button("Set All to 1", use_container_width=True, key="lbl_set1"):
             for r in rows:
                 st.session_state.label_qtys[int(r["FileNumber"])] = 1
             st.session_state.label_pdf_bytes = None
             st.rerun()
     with sd:
-        if st.button("Clear All", width='stretch', key="lbl_clr"):
+        if st.button("Clear All", use_container_width=True, key="lbl_clr"):
             st.session_state.label_qtys      = {}
             st.session_state.label_pdf_bytes = None
             st.rerun()
 
     if not rows:
         st.info("No seeds found. Click Load All or try a different search.")
-
+        return
 
     st.caption(f"{len(rows)} seed(s) in list. Qty >= 1 = included in PDF.")
 
@@ -2080,7 +1898,7 @@ def page_admin():
                     f"**{u['full_name']}**  \n{u['email']}  \n"
                     f"*Registered: {str(u.get('created_at',''))[:10]}*")
                 if c2.button("Approve", key=f"apr_{u['id']}",
-                             width='stretch', type="primary"):
+                             use_container_width=True, type="primary"):
                     admin_approve(u["id"])
                     st.session_state["current_page"] = "admin"
                     # Notify user by email
@@ -2103,7 +1921,7 @@ def page_admin():
                         pass
                     st.rerun()
                 if c3.button("Deny", key=f"deny_{u['id']}",
-                             width='stretch'):
+                             use_container_width=True):
                     admin_delete_user(u["id"])
                     st.session_state["current_page"] = "admin"
                     st.rerun()
@@ -2121,7 +1939,7 @@ def page_admin():
             "Registered": str(u.get("created_at",""))[:10],
             "Last Login":  str(u.get("last_login",""))[:10] if u.get("last_login") else "Never",
         } for u in all_users])
-        st.dataframe(df, width='stretch', hide_index=True)
+        st.dataframe(df, use_container_width=True, hide_index=True)
 
         st.markdown("---")
         st.markdown("#### Manage User")
@@ -2131,11 +1949,11 @@ def page_admin():
         if sel_user:
             c1, c2, c3 = st.columns(3)
             if sel_user["is_approved"]:
-                if c1.button("Revoke Access", width='stretch'):
+                if c1.button("Revoke Access", use_container_width=True):
                     admin_revoke(sel_user["id"])
                     st.rerun()
             else:
-                if c1.button("Approve", width='stretch',
+                if c1.button("Approve", use_container_width=True,
                              type="primary"):
                     admin_approve(sel_user["id"])
                     st.rerun()
@@ -2143,7 +1961,7 @@ def page_admin():
                 "Role", ["user","admin"],
                 index=0 if sel_user["role"] == "user" else 1,
                 key="role_sel")
-            if c2.button("Set Role", width='stretch'):
+            if c2.button("Set Role", use_container_width=True):
                 conn = get_pg_conn()
                 cur  = conn.cursor()
                 cur.execute(
@@ -2151,7 +1969,7 @@ def page_admin():
                     (new_role, sel_user["id"]))
                 conn.commit(); cur.close(); conn.close()
                 st.rerun()
-            if c3.button("Delete User", width='stretch'):
+            if c3.button("Delete User", use_container_width=True):
                 if sel_user["role"] != "admin":
                     admin_delete_user(sel_user["id"])
                     st.rerun()
@@ -2191,17 +2009,17 @@ def sidebar_nav():
         if urole == "admin":
             is_on_admin = st.session_state.get("current_page") == "admin"
             if st.button("Admin Panel" + (" (active)" if is_on_admin else ""),
-                         width='stretch'):
+                         use_container_width=True):
                 st.session_state["current_page"] = "admin"
                 st.rerun()
 
         st.markdown(
             "<small>Cochise County Master Gardener Association<br/>"
-            "v4.0 7.24.2026 Alan Borhauer</small>",
+            "v2.0 6.8.2026 Alan Borhauer</small>",
             unsafe_allow_html=True,
         )
         st.markdown("---")
-        if st.button("🔒 Log Out", width='stretch'):
+        if st.button("🔒 Log Out", use_container_width=True):
             for k in ["authenticated","user_email","user_name",
                       "user_role","auth_step","auth_email"]:
                 st.session_state.pop(k, None)
