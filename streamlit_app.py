@@ -1450,6 +1450,13 @@ def page_browse():
     chosen_fn = fn_options[chosen_label]
     chosen_row = next((r for r in rows if r["FileNumber"] == chosen_fn), None)
 
+    # Reset the "already duplicated" guard whenever the user switches
+    # to a different seed, so duplicating stays a one-time action per
+    # selection instead of allowing repeat clicks to keep creating more.
+    if st.session_state.get("_prev_browse_fn") != chosen_fn:
+        st.session_state["_prev_browse_fn"] = chosen_fn
+        st.session_state.pop("duplicate_saved_for", None)
+
     if chosen_row:
         # Nav-style action buttons
         if "browse_action" not in st.session_state:
@@ -1601,6 +1608,21 @@ def _browse_edit_form(row: dict, is_duplicate: bool = False):
 def _browse_duplicate_form(source_row: dict):
     """Duplicate a seed record with a new file number."""
     src_fn = source_row["FileNumber"]
+
+    if st.session_state.get("duplicate_saved_for") == src_fn:
+        st.success(
+            f"You already created a duplicate of #{src_fn} "
+            f"{source_row['Family']} -- {source_row['Variety']} this session."
+        )
+        st.caption(
+            "Select a different seed from the dropdown above to "
+            "create another duplicate."
+        )
+        if st.button("Create another duplicate of this seed anyway"):
+            st.session_state.pop("duplicate_saved_for", None)
+            st.rerun()
+        return
+
     next_fn = db_next_fn()
     st.info(f"Duplicating **#{source_row['FileNumber']} {source_row['Family']} -- "
             f"{source_row['Variety']}** as new record **#{next_fn}**. "
@@ -1682,6 +1704,7 @@ def _browse_duplicate_form(source_row: dict):
                 })
                 st.success(f"✅ New seed #{fn} saved as a duplicate of "
                            f"#{source_row['FileNumber']}.")
+                st.session_state["duplicate_saved_for"] = source_row["FileNumber"]
                 show_download_bar()
                 st.rerun()
 
