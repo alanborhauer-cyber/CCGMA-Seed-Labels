@@ -1030,7 +1030,7 @@ def generate_labels_pdf(label_data: list,
     # Avery 94207 geometry
     PAGE_W, PAGE_H = letter
 
-    MARGIN_TOP = 0.50 * inch
+    MARGIN_TOP = 0.45 * inch
     LEFT_X = 0.25 * inch
 
     LABEL_W = 4.00 * inch
@@ -1049,16 +1049,16 @@ def generate_labels_pdf(label_data: list,
     PER_PAGE = COLS * ROWS
 
     PAD_L, PAD_R, PAD_T, PAD_B = 4, 4, 2, 2
-    TITLE_H         = 24
+    TITLE_H         = 20
     LEFT_FRAC       = 2 / 3
 
     BORDER  = colors.HexColor("#000000")
     DIVIDER = colors.HexColor("#888888")
     GREEN   = colors.HexColor("#225522")
 
-    title_sty = ParagraphStyle("ttl", fontSize=9, fontName="Helvetica-Bold",
+    title_sty = ParagraphStyle("ttl", fontSize=10, fontName="Helvetica-Bold",
         textColor=GREEN, alignment=TA_CENTER, leading=12, spaceAfter=0)
-    fam_sty = ParagraphStyle("fam", fontSize=10, fontName="Helvetica-Bold",
+    fam_sty = ParagraphStyle("fam", fontSize=9, fontName="Helvetica-Bold",
         textColor=colors.red, alignment=TA_LEFT, leading=12, spaceAfter=1)
     var_sty = ParagraphStyle("var", fontSize=9, fontName="Helvetica-Oblique",
         textColor=colors.black, alignment=TA_LEFT, leading=12, spaceAfter=2)
