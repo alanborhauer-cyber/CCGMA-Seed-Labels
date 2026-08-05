@@ -244,7 +244,7 @@ st.markdown("""
         color: white;
         margin: 0;
         font-size: clamp(1.1rem, 4vw, 1.6rem);
-        line-height: 1.3;
+        line-height: 1.0;
     }
     .ccmga-title p {
         color: #c8e6c9;
@@ -1056,11 +1056,11 @@ def generate_labels_pdf(label_data: list,
     DIVIDER = colors.HexColor("#888888")
     GREEN   = colors.HexColor("#225522")
 
-    title_sty = ParagraphStyle("ttl", fontSize=10, fontName="Helvetica-Bold",
+    title_sty = ParagraphStyle("ttl", fontSize=9, fontName="Helvetica-Bold",
         textColor=GREEN, alignment=TA_CENTER, leading=12, spaceAfter=0)
     fam_sty = ParagraphStyle("fam", fontSize=10, fontName="Helvetica-Bold",
         textColor=colors.red, alignment=TA_LEFT, leading=12, spaceAfter=1)
-    var_sty = ParagraphStyle("var", fontSize=10, fontName="Helvetica-Oblique",
+    var_sty = ParagraphStyle("var", fontSize=9, fontName="Helvetica-Oblique",
         textColor=colors.black, alignment=TA_LEFT, leading=12, spaceAfter=2)
     cmt_sty = ParagraphStyle("cmt", fontSize=8, fontName="Helvetica",
         textColor=colors.black, alignment=TA_LEFT, leading=11, spaceAfter=0)
