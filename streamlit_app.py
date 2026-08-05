@@ -1605,59 +1605,59 @@ def _browse_duplicate_form(source_row: dict):
     st.info(f"Duplicating **#{source_row['FileNumber']} {source_row['Family']} -- "
             f"{source_row['Variety']}** as new record **#{next_fn}**. "
             "Edit any fields then save.")
-    with st.form(key=f"dup_form_{src_fn}"):
+    with st.form(key=f"dup_form_{src_fn}_{next_fn}"):
         c1 = st.container()
         c2 = st.container()
         with c1:
             fn      = st.number_input("File Number *", value=next_fn,
                                       min_value=1, step=1,
-                                      key=f"dup_fn_{src_fn}")
+                                      key=f"dup_fn_{src_fn}_{next_fn}")
             family  = st.text_input("Family",     value=source_row.get("Family",""),
-                                    key=f"dup_family_{src_fn}")
+                                    key=f"dup_family_{src_fn}_{next_fn}")
             variety = st.text_input("Variety",    value=source_row.get("Variety",""),
-                                    key=f"dup_variety_{src_fn}")
+                                    key=f"dup_variety_{src_fn}_{next_fn}")
             source  = st.text_input("Seed Source",value=source_row.get("SeedSource",""),
-                                    key=f"dup_source_{src_fn}")
+                                    key=f"dup_source_{src_fn}_{next_fn}")
             comments= st.text_area("Comments",    value=source_row.get("Comments",""), height=80,
-                                    key=f"dup_comments_{src_fn}")
+                                    key=f"dup_comments_{src_fn}_{next_fn}")
             grown_by= st.text_input("Grown By",   value=source_row.get("GrownBy",""),
-                                    key=f"dup_grownby_{src_fn}")
+                                    key=f"dup_grownby_{src_fn}_{next_fn}")
             where   = st.text_input("Where Grown",value=source_row.get("WhereGrown",""),
-                                    key=f"dup_where_{src_fn}")
+                                    key=f"dup_where_{src_fn}_{next_fn}")
         with c2:
             year    = st.text_input("Year",       value=source_row.get("Year",""),
-                                    key=f"dup_year_{src_fn}")
+                                    key=f"dup_year_{src_fn}_{next_fn}")
             numseeds= st.text_input("# of Seeds", value=source_row.get("NumSeeds",""),
-                                    key=f"dup_numseeds_{src_fn}")
+                                    key=f"dup_numseeds_{src_fn}_{next_fn}")
             edible  = st.text_input("Edible",     value=source_row.get("Edible",""),
-                                    key=f"dup_edible_{src_fn}")
+                                    key=f"dup_edible_{src_fn}_{next_fn}")
             season_v = source_row.get("Season","")
             season  = st.selectbox("Season", SEASON_OPTS,
                                    index=SEASON_OPTS.index(season_v)
                                    if season_v in SEASON_OPTS else 0,
-                                   key=f"dup_season_{src_fn}")
+                                   key=f"dup_season_{src_fn}_{next_fn}")
             saver_v = source_row.get("SeedSaverLevel","")
             saver   = st.selectbox("Seed Saver Level", SAVER_OPTS,
                                    index=SAVER_OPTS.index(saver_v)
                                    if saver_v in SAVER_OPTS else 0,
-                                   key=f"dup_saver_{src_fn}")
+                                   key=f"dup_saver_{src_fn}_{next_fn}")
             peran_v = source_row.get("PerennialAnnual","")
             peran   = st.selectbox("Perennial/Annual", PERAN_OPTS,
                                    index=PERAN_OPTS.index(peran_v)
                                    if peran_v in PERAN_OPTS else 0,
-                                   key=f"dup_peran_{src_fn}")
+                                   key=f"dup_peran_{src_fn}_{next_fn}")
             hybrid  = st.text_input("Hybrid-Do Not Save",
                                     value=source_row.get("HybridDoNotSave",""),
-                                    key=f"dup_hybrid_{src_fn}")
+                                    key=f"dup_hybrid_{src_fn}_{next_fn}")
             soil_t  = st.text_input("Soil Temperature",
                                     value=source_row.get("SoilTemperature",""),
-                                    key=f"dup_soilt_{src_fn}")
+                                    key=f"dup_soilt_{src_fn}_{next_fn}")
             germ    = st.text_input("Germination",
                                     value=source_row.get("Germination",""),
-                                    key=f"dup_germ_{src_fn}")
+                                    key=f"dup_germ_{src_fn}_{next_fn}")
         bg_info = st.text_area("Background Info",
                                value=source_row.get("BackgroundInfo",""), height=80,
-                               key=f"dup_bginfo_{src_fn}")
+                               key=f"dup_bginfo_{src_fn}_{next_fn}")
 
         if st.form_submit_button("Save as New Record", width='stretch'):
             fn = int(fn)
@@ -2246,4 +2246,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
