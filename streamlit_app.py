@@ -1048,7 +1048,7 @@ def generate_labels_pdf(label_data: list,
     ROWS = 5
     PER_PAGE = COLS * ROWS
 
-    PAD_L, PAD_R, PAD_T, PAD_B = 4, 4, 3, 3
+    PAD_L, PAD_R, PAD_T, PAD_B = 4, 4, 2, 2
     TITLE_H         = 24
     LEFT_FRAC       = 2 / 3
 
