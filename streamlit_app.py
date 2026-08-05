@@ -576,16 +576,38 @@ def db_search(term: str = "") -> list[dict]:
         """, (t, t, t))
     else:
         cur.execute('SELECT * FROM seeds ORDER BY "FileNumber"')
-    # Coerce None ? "" but keep FileNumber as int
+    # Coerce None -> "" and normalize line endings, but keep FileNumber as int.
+    # Windows-style CRLF/CR line breaks in a stored value cause a browser's
+    # <textarea> to silently re-normalize them to LF when reading the field
+    # back out -- since that differs from what React/Streamlit thinks is in
+    # the box, it forces a resync on every keystroke that snaps the cursor
+    # to the end. Normalizing here fixes it everywhere the data is used.
     def clean_row(r):
         d = dict(r)
-        return {k: (int(v) if k == "FileNumber" and v is not None
-                    else str(v).strip() if v is not None else "")
-                for k, v in d.items()}
+        out = {}
+        for k, v in d.items():
+            if k == "FileNumber" and v is not None:
+                out[k] = int(v)
+            elif v is None:
+                out[k] = ""
+            else:
+                out[k] = str(v).replace("\r\n", "\n").replace("\r", "\n").strip()
+        return out
     rows = [clean_row(r) for r in cur.fetchall()]
     cur.close()
     conn.close()
     return rows
+
+
+def _normalize_line_endings(v):
+    """
+    Normalize CRLF/CR line breaks to plain LF before writing to the
+    database, so text saved from any browser/OS is consistent and
+    doesn't cause a textarea cursor-jump bug on the way back out.
+    """
+    if isinstance(v, str):
+        return v.replace("\r\n", "\n").replace("\r", "\n")
+    return v
 
 
 def db_add(data: dict):
@@ -598,7 +620,7 @@ def db_add(data: dict):
          "Edible","WhereGrown","PerennialAnnual","GrownBy","Year",
          "SoilTemperature","Germination","BackgroundInfo")
         VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-    """, tuple(data.get(c, "") for c in COLS))
+    """, tuple(_normalize_line_endings(data.get(c, "")) for c in COLS))
     conn.commit()
     cur.close()
     conn.close()
@@ -616,14 +638,14 @@ def db_update(fn: int, data: dict):
             "SoilTemperature"=%s, "Germination"=%s, "BackgroundInfo"=%s
         WHERE "FileNumber"=%s
     """, (
-        data.get("Family",""),        data.get("Variety",""),
-        data.get("SeedSource",""),    data.get("Comments",""),
-        data.get("NumSeeds",""),      data.get("Season",""),
-        data.get("SeedSaverLevel",""),data.get("HybridDoNotSave",""),
-        data.get("Edible",""),        data.get("WhereGrown",""),
-        data.get("PerennialAnnual",""),data.get("GrownBy",""),
-        data.get("Year",""),          data.get("SoilTemperature",""),
-        data.get("Germination",""),   data.get("BackgroundInfo",""),
+        _normalize_line_endings(data.get("Family","")),        _normalize_line_endings(data.get("Variety","")),
+        _normalize_line_endings(data.get("SeedSource","")),    _normalize_line_endings(data.get("Comments","")),
+        _normalize_line_endings(data.get("NumSeeds","")),      _normalize_line_endings(data.get("Season","")),
+        _normalize_line_endings(data.get("SeedSaverLevel","")),_normalize_line_endings(data.get("HybridDoNotSave","")),
+        _normalize_line_endings(data.get("Edible","")),        _normalize_line_endings(data.get("WhereGrown","")),
+        _normalize_line_endings(data.get("PerennialAnnual","")),_normalize_line_endings(data.get("GrownBy","")),
+        _normalize_line_endings(data.get("Year","")),          _normalize_line_endings(data.get("SoilTemperature","")),
+        _normalize_line_endings(data.get("Germination","")),   _normalize_line_endings(data.get("BackgroundInfo","")),
         fn,
     ))
     conn.commit()
