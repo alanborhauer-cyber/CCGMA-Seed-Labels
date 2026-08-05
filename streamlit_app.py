@@ -2248,6 +2248,14 @@ def main():
     if selected != prev:
         # User clicked a different radio item -- leave admin mode
         st.session_state.pop("current_page", None)
+
+        # Re-entering Browse Seeds from another page should always
+        # land back on View mode, not wherever the user last left it
+        # (e.g. mid-Edit or mid-Duplicate).
+        if selected == "Browse Seeds":
+            st.session_state["browse_action"] = "View"
+            st.session_state.pop("duplicate_saved_for", None)
+
     st.session_state["_prev_selected"] = selected
 
     current_page = st.session_state.get("current_page", "")
