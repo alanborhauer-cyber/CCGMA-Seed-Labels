@@ -1052,7 +1052,7 @@ def generate_labels_pdf(label_data: list,
     # Avery 94207 geometry
     PAGE_W, PAGE_H = letter
 
-    MARGIN_TOP = 0.50 * inch
+    MARGIN_TOP = 0.45 * inch
     LEFT_X = 0.25 * inch
 
     LABEL_W = 4.00 * inch
@@ -1064,13 +1064,13 @@ def generate_labels_pdf(label_data: list,
     COLUMN_PITCH = LABEL_W + GUTTER
     
     # Fine-tune only the right column
-    RIGHT_COLUMN_ADJUST = 0.09 * inch
+    RIGHT_COLUMN_ADJUST = 0.07 * inch
     
     COLS = 2
     ROWS = 5
     PER_PAGE = COLS * ROWS
 
-    PAD_L, PAD_R, PAD_T, PAD_B = 4, 4, 1, 2
+    PAD_L, PAD_R, PAD_T, PAD_B = 4, 4, 2, 2
     TITLE_H         = 24
     LEFT_FRAC       = 2 / 3
 
