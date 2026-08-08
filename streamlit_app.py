@@ -1052,7 +1052,7 @@ def generate_labels_pdf(label_data: list,
     # Avery 94207 geometry
     PAGE_W, PAGE_H = letter
 
-    MARGIN_TOP = 0.45 * inch
+    MARGIN_TOP = 0.50 * inch
     LEFT_X = 0.25 * inch
 
     LABEL_W = 4.00 * inch
@@ -1064,13 +1064,27 @@ def generate_labels_pdf(label_data: list,
     COLUMN_PITCH = LABEL_W + GUTTER
     
     # Fine-tune only the right column
-    RIGHT_COLUMN_ADJUST = 0.07 * inch
+    RIGHT_COLUMN_ADJUST = 0.09 * inch
     
     COLS = 2
     ROWS = 5
     PER_PAGE = COLS * ROWS
 
-    PAD_L, PAD_R, PAD_T, PAD_B = 4, 4, 2, 2
+    # Exact, hardcoded top-of-row start positions (in inches from the
+    # bottom of the page, ReportLab's native origin), one per physical
+    # label row. Defaults below reproduce the old even LABEL_H-pitch
+    # grid -- nudge any individual value up (+) or down (-) in small
+    # increments (e.g. 0.02") to correct that specific row if your
+    # printer's actual output doesn't land exactly where expected.
+    ROW_Y_STARTS = [
+        (PAGE_H - MARGIN_TOP - 1 * LABEL_H),  # Row 1 (top)
+        (PAGE_H - MARGIN_TOP - 2 * LABEL_H),  # Row 2
+        (PAGE_H - MARGIN_TOP - 3 * LABEL_H),  # Row 3
+        (PAGE_H - MARGIN_TOP - 4 * LABEL_H),  # Row 4
+        (PAGE_H - MARGIN_TOP - 5 * LABEL_H),  # Row 5 (bottom)
+    ]
+
+    PAD_L, PAD_R, PAD_T, PAD_B = 4, 4, 1, 2
     TITLE_H         = 24
     LEFT_FRAC       = 2 / 3
 
@@ -1114,8 +1128,8 @@ def generate_labels_pdf(label_data: list,
             if col_num == 1:
                 lx += RIGHT_COLUMN_ADJUST
             
-            # Compute Y position
-            ly = PAGE_H - MARGIN_TOP - (row_num + 1) * LABEL_H + Y_OFFSET
+            # Y position -- exact hardcoded start point for this row
+            ly = ROW_Y_STARTS[row_num] + Y_OFFSET
             
             # Round coordinates
             lx = round(lx, 3)
@@ -1339,7 +1353,7 @@ def page_home():
 |---|---|
 | **Built for** | Cochise County Master Gardener Association |
 | **Labels** | For use with Avery 94207 Labels (2" x 4", 10 per sheet) |
-| **Version** | 5.0 8.6.2026 |
+| **Version** | 3.0 7.12.2026 |
     """)
 
     # -- Seeds with comments or background info over 300 chars -------
@@ -1551,8 +1565,13 @@ def _browse_edit_form(row: dict, is_duplicate: bool = False):
             source  = st.text_input("Seed Source",   value=row.get("SeedSource",""),
                                     key=f"edit_source_{fn}")
             comments= st.text_area("Comments",       value=row.get("Comments",""), height=100,
-                                   help="Max 300 chars for label printing", max_chars=300,
+                                   help="Recommended max 300 chars for label printing "
+                                        "-- longer text won't be truncated here, but may "
+                                        "get cut off on the printed label.",
                                    key=f"edit_comments_{fn}")
+            if len(comments) > 300:
+                st.caption(f"⚠️ {len(comments)} chars -- over the 300 char "
+                           "label-printing guideline.")
             grown_by= st.text_input("Grown By",      value=row.get("GrownBy",""),
                                     key=f"edit_grownby_{fn}")
             where   = st.text_input("Where Grown",   value=row.get("WhereGrown",""),
@@ -1587,8 +1606,13 @@ def _browse_edit_form(row: dict, is_duplicate: bool = False):
                                     key=f"edit_germ_{fn}")
         bg_info = st.text_area("Background Info",
                                value=row.get("BackgroundInfo",""), height=80,
-                               help="Max 300 chars for label printing", max_chars=300,
+                               help="Recommended max 300 chars for label printing "
+                                    "-- longer text won't be truncated here, but may "
+                                    "get cut off on the printed label.",
                                key=f"edit_bginfo_{fn}")
+        if len(bg_info) > 300:
+            st.caption(f"⚠️ {len(bg_info)} chars -- over the 300 char "
+                       "label-printing guideline.")
 
         if st.form_submit_button("Save Changes", width='stretch'):
             db_update(fn, {
@@ -2220,7 +2244,7 @@ def sidebar_nav():
 
         st.markdown(
             "<small>Cochise County Master Gardener Association<br/>"
-            "v5.0 8.6.2026 Alan Borhauer</small>",
+            "v4.0 7.24.2026 Alan Borhauer</small>",
             unsafe_allow_html=True,
         )
         st.markdown("---")
