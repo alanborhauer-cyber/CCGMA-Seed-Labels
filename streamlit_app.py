@@ -1080,8 +1080,8 @@ def generate_labels_pdf(label_data: list,
         (PAGE_H - MARGIN_TOP - 1 * LABEL_H),  # Row 1 (top)
         (PAGE_H - MARGIN_TOP - 2 * LABEL_H),  # Row 2
         (PAGE_H - MARGIN_TOP - 3 * LABEL_H),  # Row 3
-        (PAGE_H - MARGIN_TOP - 4 * LABEL_H),  # Row 4
-        (PAGE_H - MARGIN_TOP - 5 * LABEL_H),  # Row 5 (bottom)
+        (PAGE_H - MARGIN_TOP - 4 * LABEL_H) + 0.1,  # Row 4
+        (PAGE_H - MARGIN_TOP - 5 * LABEL_H) + 0.2,  # Row 5 (bottom)
     ]
 
     PAD_L, PAD_R, PAD_T, PAD_B = 4, 4, 1, 2
