@@ -7,6 +7,7 @@ Run with:  streamlit run streamlit_app.py
 
 import os
 import io
+import re
 import sys
 import sqlite3
 import json
@@ -1084,8 +1085,8 @@ def generate_labels_pdf(label_data: list,
         (PAGE_H - MARGIN_TOP - 5 * LABEL_H),  # Row 5 (bottom)
     ]
 
-    PAD_L, PAD_R, PAD_T, PAD_B = 4, 4, 3, 2
-    TITLE_H         = 20
+    PAD_L, PAD_R, PAD_T, PAD_B = 4, 4, 1, 2
+    TITLE_H         = 24
     LEFT_FRAC       = 2 / 3
 
     BORDER  = colors.HexColor("#000000")
@@ -1144,6 +1145,7 @@ def generate_labels_pdf(label_data: list,
             year_val = (row.get("Year")            or "").strip()
             comment  = " ".join((row.get("Comments") or "").split())[:300]
             saver    = (row.get("SeedSaverLevel")  or "").strip()
+            peran    = (row.get("PerennialAnnual") or "").strip()
             germ     = (row.get("Germination")     or "").strip()
             soil_t   = (row.get("SoilTemperature") or "").strip()
             hybrid   = (row.get("HybridDoNotSave") or "").strip()
@@ -1245,7 +1247,15 @@ def generate_labels_pdf(label_data: list,
                 if year_val: right_items.append(Paragraph(year_val, rgt_sty))
                 if edible:   right_items.append(Paragraph(edible.upper(), rgt_sty))
                 if season:   right_items.append(Paragraph(season, rit_sty))
-                if numseeds: right_items.append(Paragraph(f"{numseeds} Seeds", rgt_sty))
+                if numseeds:
+                    # Avoid "25 seeds Seeds" if the field already
+                    # includes the word "seed"/"seeds".
+                    if re.search(r"seeds?\b", numseeds, re.IGNORECASE):
+                        seeds_label = numseeds
+                    else:
+                        seeds_label = f"{numseeds} Seeds"
+                    right_items.append(Paragraph(seeds_label, rgt_sty))
+                if peran:    right_items.append(Paragraph(peran, rit_sty))
                 if saver:    right_items.append(Paragraph(saver, svr_sty))
                 # Show germ and soil temp as separate clean lines
                 if germ:
