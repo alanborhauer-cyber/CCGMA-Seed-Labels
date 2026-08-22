@@ -605,9 +605,16 @@ def _normalize_line_endings(v):
     Normalize CRLF/CR line breaks to plain LF before writing to the
     database, so text saved from any browser/OS is consistent and
     doesn't cause a textarea cursor-jump bug on the way back out.
+
+    Also converts an empty string to None (SQL NULL). This matters
+    because some columns (e.g. Year, NumSeeds) may be numeric types
+    in Postgres -- an empty string '' is invalid input for a bigint
+    column and raises InvalidTextRepresentation, but NULL is always
+    valid for an empty/blank field regardless of column type.
     """
     if isinstance(v, str):
-        return v.replace("\r\n", "\n").replace("\r", "\n")
+        v = v.replace("\r\n", "\n").replace("\r", "\n")
+        return v if v.strip() != "" else None
     return v
 
 
